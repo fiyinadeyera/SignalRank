@@ -1,5 +1,8 @@
 from flask import Flask, render_template, request, jsonify
 import os
+import hmac
+import hashlib
+import subprocess
 from dotenv import dotenv_values
 from datetime import datetime, timedelta
 import requests
@@ -8,9 +11,10 @@ import anthropic
 app = Flask(__name__)
 
 _env = dotenv_values(os.path.join(os.path.dirname(__file__), ".env"))
-MEETUP_KEY = _env.get("MEETUP_API_KEY")
-TICKETMASTER_KEY = _env.get("TICKETMASTER_API_KEY")
-ANTHROPIC_KEY = _env.get("ANTHROPIC_API_KEY")
+MEETUP_KEY = os.environ.get("MEETUP_API_KEY") or _env.get("MEETUP_API_KEY")
+TICKETMASTER_KEY = os.environ.get("TICKETMASTER_API_KEY") or _env.get("TICKETMASTER_API_KEY")
+ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY") or _env.get("ANTHROPIC_API_KEY")
+EVENTBRITE_KEY = os.environ.get("EVENTBRITE_API_KEY") or _env.get("EVENTBRITE_API_KEY")
 
 SAMPLE_EVENTS = [
     {
@@ -140,6 +144,51 @@ def fetch_ticketmaster_events():
         return []
 
 
+def fetch_eventbrite_events():
+    if not EVENTBRITE_KEY or EVENTBRITE_KEY == "your_key_here":
+        return []
+
+    try:
+        start = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        end = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        r = requests.get(
+            "https://www.eventbriteapi.com/v3/events/search/",
+            headers={"Authorization": f"Bearer {EVENTBRITE_KEY}"},
+            params={
+                "location.address": "New York, NY",
+                "location.within": "10mi",
+                "start_date.range_start": start,
+                "start_date.range_end": end,
+                "expand": "venue",
+                "page_size": 50,
+            },
+            timeout=5
+        )
+
+        if r.status_code != 200:
+            return []
+
+        events = []
+        for e in r.json().get("events", []):
+            venue = e.get("venue") or {}
+            is_free = e.get("is_free", False)
+            local_start = e.get("start", {}).get("local", "")
+            if local_start:
+                local_start = local_start.replace("T", " ")[:16]
+            events.append({
+                "name": e.get("name", {}).get("text", ""),
+                "description": (e.get("description", {}).get("text", "") or "")[:300],
+                "start": local_start,
+                "venue": venue.get("name", "TBD"),
+                "is_free": is_free,
+                "url": e.get("url", ""),
+            })
+        return events
+    except Exception:
+        return []
+
+
 def rank_events(events, user_goals):
     client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
 
@@ -172,6 +221,33 @@ Score: X/10 | FREE or PAID
     )
 
     return message.content[0].text
+
+
+WEBHOOK_SECRET = os.environ.get("GITHUB_WEBHOOK_SECRET", "")
+
+
+@app.route("/github-webhook", methods=["POST"])
+def github_webhook():
+    sig = request.headers.get("X-Hub-Signature-256", "")
+    if WEBHOOK_SECRET:
+        body = request.get_data()
+        expected = "sha256=" + hmac.new(
+            WEBHOOK_SECRET.encode(), body, hashlib.sha256
+        ).hexdigest()
+        if not hmac.compare_digest(sig, expected):
+            return jsonify({"error": "Invalid signature"}), 403
+
+    event = request.headers.get("X-GitHub-Event", "")
+    if event == "push":
+        result = subprocess.run(
+            ["git", "pull"],
+            cwd=os.path.dirname(__file__),
+            capture_output=True,
+            text=True
+        )
+        return jsonify({"status": "pulled", "output": result.stdout.strip()}), 200
+
+    return jsonify({"status": "ignored"}), 200
 
 
 @app.route("/")
@@ -223,6 +299,7 @@ def optimize():
     all_events = []
     all_events.extend(fetch_meetup_events())
     all_events.extend(fetch_ticketmaster_events())
+    all_events.extend(fetch_eventbrite_events())
 
     if not all_events:
         all_events = SAMPLE_EVENTS
@@ -251,4 +328,4 @@ def optimize():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=8000)
+    app.run(host="0.0.0.0", port=5000, debug=True)
