@@ -52,7 +52,18 @@
         }
 
         .content {
-            padding: 40px 30px;
+            padding: 60px 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 70vh;
+        }
+
+        form {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .form-group {
@@ -86,11 +97,6 @@
             box-shadow: 0 0 0 3px rgba(77, 166, 255, 0.15);
         }
 
-        .example {
-            font-size: 13px;
-            color: #777;
-            margin-top: 8px;
-        }
 
         .filter-buttons {
             display: flex;
@@ -100,13 +106,13 @@
         }
 
         .filter-btn {
-            padding: 8px 14px;
+            padding: 6px 12px;
             border: 1px solid #444;
             background: transparent;
             color: #888;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 500;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 400;
             cursor: pointer;
             transition: all 0.2s;
         }
@@ -125,11 +131,19 @@
         .form-group {
             display: flex;
             flex-direction: column;
-            align-items: center;
+            width: 100%;
+            max-width: 500px;
         }
 
         .form-group > textarea {
-            max-width: 100%;
+            width: 100%;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 20px;
+            justify-content: center;
         }
 
         .submit-btn {
@@ -361,28 +375,23 @@
     <div class="container">
         <div class="header">
             <h1>Signal Rank</h1>
-            <p>Find events that matter to you</p>
         </div>
 
         <div class="content">
             <form id="goalForm">
                 <div class="form-group">
-                    <label for="goals">What are you optimizing for?</label>
-                    <textarea id="goals" placeholder="e.g., career networking in tech, meeting new people, learning about startups..."></textarea>
-                    <div class="example">Be specific about what matters to you</div>
+                    <label for="goals">Event that moves you forward</label>
+                    <textarea id="goals" placeholder="career networking, comedy, jam sessions, product networking..."></textarea>
                 </div>
 
-                <div class="form-group">
-                    <label>When are you looking?</label>
-                    <div class="filter-buttons">
-                        <button type="button" class="filter-btn active" data-filter="this-week">This Week</button>
-                        <button type="button" class="filter-btn" data-filter="today">Today</button>
-                        <button type="button" class="filter-btn" data-filter="next-week">Next Week</button>
-                    </div>
-                    <input type="hidden" id="dateFilter" value="this-week">
+                <div class="filter-buttons">
+                    <button type="button" class="filter-btn active" data-filter="this-week">This Week</button>
+                    <button type="button" class="filter-btn" data-filter="today">Today</button>
+                    <button type="button" class="filter-btn" data-filter="next-week">Next Week</button>
                 </div>
+                <input type="hidden" id="dateFilter" value="this-week">
 
-                <button type="submit" class="submit-btn">Find My Events</button>
+                <button type="submit" class="submit-btn">Find Events</button>
             </form>
 
             <div class="error" id="error"></div>
