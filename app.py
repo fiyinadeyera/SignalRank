@@ -148,21 +148,22 @@ def rank_events(events, user_goals):
         for i, e in enumerate(events)
     ])
 
-    prompt = f"""You are helping someone decide which events to attend this week.
+    prompt = f"""Pick the TOP 6 events that best match these goals: {user_goals}
 
-Their goals are: {user_goals}
-
-Here are the available events:
-
+Available events:
 {events_text}
 
-Pick the TOP 6 events that best match their goals. For each event, output EXACTLY in this format with no other text:
+Output ONLY the 6 events in this exact format. NO intro text, NO numbers, NO extra text:
 
 EVENT NAME
-One clear sentence on why this matches their goals.
+Why it matches their goals (1 sentence)
 Score: X/10 | FREE or PAID
 
-Do this for all 6 events, one per section, no dashes, no hashtags, no emojis, no formatting."""
+EVENT NAME
+Why it matches their goals (1 sentence)
+Score: X/10 | FREE or PAID
+
+[repeat for all 6 events]"""
 
     message = client.messages.create(
         model="claude-sonnet-4-6",
@@ -178,10 +179,43 @@ def index():
     return render_template("index.html")
 
 
+def get_date_range(date_filter):
+    """Get date range based on filter selection."""
+    today = datetime.now().date()
+
+    if date_filter == "today":
+        return today, today
+    elif date_filter == "next-week":
+        start = today + timedelta(days=7)
+        end = start + timedelta(days=6)
+        return start, end
+    else:  # "this-week"
+        # Get start of this week (Monday)
+        start = today - timedelta(days=today.weekday())
+        # Get end of this week (Sunday)
+        end = start + timedelta(days=6)
+        return start, end
+
+
+def filter_events_by_date(events, start_date, end_date):
+    """Filter events to only include those within the date range."""
+    filtered = []
+    for event in events:
+        try:
+            event_date_str = event.get("start", "").split()[0]
+            event_date = datetime.strptime(event_date_str, "%Y-%m-%d").date()
+            if start_date <= event_date <= end_date:
+                filtered.append(event)
+        except:
+            pass
+    return filtered
+
+
 @app.route("/api/optimize", methods=["POST"])
 def optimize():
     data = request.json
     goals = data.get("goals", "")
+    date_filter = data.get("dateFilter", "this-week")
 
     if not goals:
         return jsonify({"error": "Please enter your goals"}), 400
@@ -196,11 +230,19 @@ def optimize():
     else:
         is_live = True
 
+    # Filter by date
+    start_date, end_date = get_date_range(date_filter)
+    all_events = filter_events_by_date(all_events, start_date, end_date)
+
+    if not all_events:
+        return jsonify({"error": "No events found for the selected date range"}), 400
+
     try:
         ranked = rank_events(all_events, goals)
         return jsonify({
             "success": True,
             "ranking": ranked,
+            "events": all_events,
             "is_live": is_live,
             "event_count": len(all_events)
         })

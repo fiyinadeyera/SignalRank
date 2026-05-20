@@ -92,31 +92,74 @@
             margin-top: 8px;
         }
 
-        button {
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        .filter-btn {
+            padding: 8px 14px;
+            border: 1px solid #444;
+            background: transparent;
+            color: #888;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            border-color: #4da6ff;
+            color: #4da6ff;
+        }
+
+        .filter-btn.active {
+            background: #4da6ff;
+            border-color: #4da6ff;
+            color: white;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .form-group > textarea {
+            max-width: 100%;
+        }
+
+        .submit-btn {
             background: linear-gradient(135deg, #4da6ff 0%, #3d8ae8 100%);
             color: white;
             border: none;
-            padding: 16px 32px;
-            font-size: 16px;
+            padding: 14px 48px;
+            font-size: 15px;
             font-weight: 700;
             border-radius: 16px;
             cursor: pointer;
             transition: all 0.3s ease;
-            width: 100%;
+            width: auto;
+            max-width: 400px;
             box-shadow: 0 8px 20px rgba(77, 166, 255, 0.25);
             letter-spacing: 0.5px;
+            margin: 0 auto;
+            display: block;
         }
 
-        button:hover {
+        .submit-btn:hover {
             transform: translateY(-4px);
             box-shadow: 0 16px 32px rgba(77, 166, 255, 0.35);
         }
 
-        button:active {
+        .submit-btn:active {
             transform: translateY(-2px);
         }
 
-        button:disabled {
+        .submit-btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
@@ -190,7 +233,6 @@
             padding: 18px;
             margin-bottom: 16px;
             border-radius: 12px;
-            border-left: 5px solid #4da6ff;
             display: flex;
             gap: 16px;
         }
@@ -226,6 +268,12 @@
             line-height: 1.5;
         }
 
+        .event-details {
+            color: #777;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
         .event-meta {
             display: flex;
             justify-content: space-between;
@@ -234,6 +282,7 @@
             font-size: 13px;
             font-weight: 500;
             gap: 12px;
+            margin-bottom: 10px;
         }
 
         .score {
@@ -266,6 +315,19 @@
         .paid-status {
             color: #ff9f43;
             font-weight: 600;
+        }
+
+        .event-link {
+            color: #4da6ff;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .event-link:hover {
+            color: #6bb8ff;
+            text-decoration: underline;
         }
 
         .info-badge {
@@ -305,12 +367,22 @@
         <div class="content">
             <form id="goalForm">
                 <div class="form-group">
-                    <label for="goals">What are you optimizing for this week?</label>
+                    <label for="goals">What are you optimizing for?</label>
                     <textarea id="goals" placeholder="e.g., career networking in tech, meeting new people, learning about startups..."></textarea>
                     <div class="example">Be specific about what matters to you</div>
                 </div>
 
-                <button type="submit">Find My Events</button>
+                <div class="form-group">
+                    <label>When are you looking?</label>
+                    <div class="filter-buttons">
+                        <button type="button" class="filter-btn active" data-filter="this-week">This Week</button>
+                        <button type="button" class="filter-btn" data-filter="today">Today</button>
+                        <button type="button" class="filter-btn" data-filter="next-week">Next Week</button>
+                    </div>
+                    <input type="hidden" id="dateFilter" value="this-week">
+                </div>
+
+                <button type="submit" class="submit-btn">Find My Events</button>
             </form>
 
             <div class="error" id="error"></div>
@@ -337,29 +409,36 @@
 
         function parseResults(text) {
             const events = [];
-            const lines = text.split('\n').filter(line => line.trim());
+            const lines = text.split('\n').map(line => line.trim()).filter(line => line);
 
             let currentEvent = null;
-            for (const line of lines) {
-                const trimmed = line.trim();
+            let skipUntilFirstEvent = true;
 
-                if (trimmed.startsWith('Score:')) {
+            for (const line of lines) {
+                if (line.startsWith('Score:')) {
+                    // This is a score line
                     if (currentEvent) {
-                        const scoreMatch = trimmed.match(/Score:\s*(\d+)\/10\s*\|\s*(FREE|PAID)/i);
+                        const scoreMatch = line.match(/Score:\s*(\d+)\/10\s*\|\s*(FREE|PAID)/i);
                         if (scoreMatch) {
                             currentEvent.score = scoreMatch[1] + '/10';
                             currentEvent.isPaid = scoreMatch[2].toUpperCase() === 'PAID';
                             events.push(currentEvent);
+                            skipUntilFirstEvent = false;
                         }
                     }
                     currentEvent = null;
-                } else if (currentEvent === null && trimmed && !trimmed.includes('Score:')) {
-                    currentEvent = { name: trimmed, description: '', score: '?/10', isPaid: false };
-                } else if (currentEvent && !trimmed.startsWith('Score:')) {
+                } else if (skipUntilFirstEvent && !line.match(/^[A-Z]/)) {
+                    // Skip intro text until we find something that looks like an event name
+                    continue;
+                } else if (currentEvent === null && line && !line.includes('Score:')) {
+                    // Start a new event if we don't have one
+                    currentEvent = { name: line, description: '', score: '?/10', isPaid: false };
+                } else if (currentEvent && !line.startsWith('Score:') && line) {
+                    // Add to current event description
                     if (currentEvent.description) {
-                        currentEvent.description += ' ' + trimmed;
+                        currentEvent.description += ' ' + line;
                     } else {
-                        currentEvent.description = trimmed;
+                        currentEvent.description = line;
                     }
                 }
             }
@@ -367,10 +446,21 @@
             return events.slice(0, 6);
         }
 
+        // Handle filter button clicks
+        document.querySelectorAll(".filter-btn").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                e.preventDefault();
+                document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                document.getElementById("dateFilter").value = btn.getAttribute("data-filter");
+            });
+        });
+
         document.getElementById("goalForm").addEventListener("submit", async (e) => {
             e.preventDefault();
 
             const goals = document.getElementById("goals").value.trim();
+            const dateFilter = document.getElementById("dateFilter").value;
 
             if (!goals) {
                 showError("Please enter what you're optimizing for");
@@ -384,7 +474,7 @@
                 const response = await fetch("/api/optimize", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ goals })
+                    body: JSON.stringify({ goals, dateFilter })
                 });
 
                 const data = await response.json();
@@ -395,12 +485,26 @@
                     return;
                 }
 
-                const events = parseResults(data.ranking);
-                const cardsHtml = events.map((event, index) => {
+                const rankedEvents = parseResults(data.ranking);
+                const allEvents = data.events || [];
+
+                const cardsHtml = rankedEvents.map((event, index) => {
                     const scoreNum = parseInt(event.score);
                     let scoreClass = 'score-low';
                     if (scoreNum >= 8) scoreClass = 'score-high';
                     else if (scoreNum >= 6) scoreClass = 'score-medium';
+
+                    // Find the full event data by matching name
+                    const fullEvent = allEvents.find(e => e.name.toLowerCase() === event.name.toLowerCase());
+                    const eventUrl = fullEvent?.url || '';
+                    const eventTime = fullEvent?.start || '';
+
+                    // Format time (extract time from start if available)
+                    let timeStr = '';
+                    if (eventTime) {
+                        const parts = eventTime.split(' ');
+                        timeStr = parts.length > 1 ? parts[1] : parts[0];
+                    }
 
                     return `
                         <div class="event-card">
@@ -408,12 +512,14 @@
                             <div class="event-content">
                                 <div class="event-name">${escapeHtml(event.name)}</div>
                                 <div class="event-description">${escapeHtml(event.description)}</div>
+                                ${timeStr ? `<div class="event-details">${timeStr}</div>` : ''}
                                 <div class="event-meta">
                                     <span class="score ${scoreClass}">${event.score}</span>
                                     <span class="${event.isPaid ? 'paid-status' : 'free-status'}">
                                         ${event.isPaid ? 'PAID' : 'FREE'}
                                     </span>
                                 </div>
+                                ${eventUrl ? `<a href="${eventUrl}" target="_blank" class="event-link">Register →</a>` : ''}
                             </div>
                         </div>
                     `;
