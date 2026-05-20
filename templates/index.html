@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signal Rank</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: #1e1e1e;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            max-width: 800px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e1e1e 0%, #252525 100%);
+            color: #e0e0e0;
+            padding: 50px 30px;
+            text-align: center;
+            border-bottom: 2px solid #333;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.85;
+            color: #b0b0b0;
+        }
+
+        .content {
+            padding: 40px 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #e0e0e0;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #333;
+            border-radius: 16px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 100px;
+            transition: all 0.3s;
+            background: #252525;
+            color: #e0e0e0;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #4da6ff;
+            box-shadow: 0 0 0 3px rgba(77, 166, 255, 0.15);
+        }
+
+        .example {
+            font-size: 13px;
+            color: #777;
+            margin-top: 8px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #4da6ff 0%, #3d8ae8 100%);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            box-shadow: 0 8px 20px rgba(77, 166, 255, 0.25);
+            letter-spacing: 0.5px;
+        }
+
+        button:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 32px rgba(77, 166, 255, 0.35);
+        }
+
+        button:active {
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #333;
+            border-top: 3px solid #4da6ff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading p {
+            color: #b0b0b0;
+        }
+
+        .result {
+            display: none;
+            margin-top: 30px;
+            padding: 24px;
+            background: #252525;
+            border-radius: 20px;
+            border: 2px solid #333;
+        }
+
+        .result.show {
+            display: block;
+            animation: slideIn 0.4s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result h2 {
+            color: #4da6ff;
+            margin-bottom: 15px;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .result-content {
+            color: #d0d0d0;
+            line-height: 1.8;
+            font-size: 14px;
+        }
+
+        .event-card {
+            background: #1e1e1e;
+            padding: 18px;
+            margin-bottom: 16px;
+            border-radius: 12px;
+            border-left: 4px solid #4da6ff;
+        }
+
+        .event-card:last-child {
+            margin-bottom: 0;
+        }
+
+        .event-name {
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+
+        .event-description {
+            color: #b0b0b0;
+            margin-bottom: 10px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .event-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #888;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .score {
+            color: #4da6ff;
+        }
+
+        .free-status {
+            color: #6fbf73;
+        }
+
+        .paid-status {
+            color: #ff9f43;
+        }
+
+        .info-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #4da6ff 0%, #3d8ae8 100%);
+            color: white;
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-top: 20px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(77, 166, 255, 0.2);
+        }
+
+        .error {
+            color: #ff6b6b;
+            padding: 14px;
+            background: #2a1a1a;
+            border-radius: 16px;
+            border: 2px solid #5a3a3a;
+            display: none;
+            font-weight: 500;
+        }
+
+        .error.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Signal Rank</h1>
+            <p>Find events that matter to you</p>
+        </div>
+
+        <div class="content">
+            <form id="goalForm">
+                <div class="form-group">
+                    <label for="goals">What are you optimizing for this week?</label>
+                    <textarea id="goals" placeholder="e.g., career networking in tech, meeting new people, learning about startups..."></textarea>
+                    <div class="example">Be specific about what matters to you</div>
+                </div>
+
+                <button type="submit">Find My Events</button>
+            </form>
+
+            <div class="error" id="error"></div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Ranking events for you...</p>
+            </div>
+
+            <div class="result" id="result">
+                <h2>Your Rankings</h2>
+                <div class="result-content" id="resultContent"></div>
+                <div class="info-badge" id="infoBadge"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function parseResults(text) {
+            const events = [];
+            const lines = text.split('\n').filter(line => line.trim());
+
+            let currentEvent = null;
+            for (const line of lines) {
+                const trimmed = line.trim();
+
+                if (trimmed.startsWith('Score:')) {
+                    if (currentEvent) {
+                        const scoreMatch = trimmed.match(/Score:\s*(\d+)\/10\s*\|\s*(FREE|PAID)/i);
+                        if (scoreMatch) {
+                            currentEvent.score = scoreMatch[1] + '/10';
+                            currentEvent.isPaid = scoreMatch[2].toUpperCase() === 'PAID';
+                            events.push(currentEvent);
+                        }
+                    }
+                    currentEvent = null;
+                } else if (currentEvent === null && trimmed && !trimmed.includes('Score:')) {
+                    currentEvent = { name: trimmed, description: '', score: '?/10', isPaid: false };
+                } else if (currentEvent && !trimmed.startsWith('Score:')) {
+                    if (currentEvent.description) {
+                        currentEvent.description += ' ' + trimmed;
+                    } else {
+                        currentEvent.description = trimmed;
+                    }
+                }
+            }
+
+            return events.slice(0, 6);
+        }
+
+        document.getElementById("goalForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const goals = document.getElementById("goals").value.trim();
+
+            if (!goals) {
+                showError("Please enter what you're optimizing for");
+                return;
+            }
+
+            showLoading(true);
+            showError("");
+
+            try {
+                const response = await fetch("/api/optimize", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ goals })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showError(data.error || "Something went wrong");
+                    showLoading(false);
+                    return;
+                }
+
+                const events = parseResults(data.ranking);
+                const cardsHtml = events.map(event => `
+                    <div class="event-card">
+                        <div class="event-name">${escapeHtml(event.name)}</div>
+                        <div class="event-description">${escapeHtml(event.description)}</div>
+                        <div class="event-meta">
+                            <span class="score">Score: ${event.score}</span>
+                            <span class="${event.isPaid ? 'paid-status' : 'free-status'}">
+                                ${event.isPaid ? 'PAID' : 'FREE'}
+                            </span>
+                        </div>
+                    </div>
+                `).join('');
+
+                document.getElementById("resultContent").innerHTML = cardsHtml;
+                document.getElementById("infoBadge").textContent =
+                    data.is_live
+                        ? `Live events (${data.event_count} found)`
+                        : `Sample events (add API keys for live events)`;
+
+                document.getElementById("result").classList.add("show");
+                showLoading(false);
+            } catch (error) {
+                showError("Error: " + error.message);
+                showLoading(false);
+            }
+        });
+
+        function showLoading(show) {
+            document.getElementById("loading").style.display = show ? "block" : "none";
+        }
+
+        function showError(message) {
+            const error = document.getElementById("error");
+            if (message) {
+                error.textContent = message;
+                error.classList.add("show");
+            } else {
+                error.classList.remove("show");
+            }
+        }
+    </script>
+</body>
+</html>
