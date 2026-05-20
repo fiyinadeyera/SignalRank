@@ -190,11 +190,26 @@
             padding: 18px;
             margin-bottom: 16px;
             border-radius: 12px;
-            border-left: 4px solid #4da6ff;
+            border-left: 5px solid #4da6ff;
+            display: flex;
+            gap: 16px;
         }
 
         .event-card:last-child {
             margin-bottom: 0;
+        }
+
+        .event-number {
+            font-weight: 700;
+            font-size: 20px;
+            color: #4da6ff;
+            min-width: 28px;
+            text-align: center;
+            margin-top: 2px;
+        }
+
+        .event-content {
+            flex: 1;
         }
 
         .event-name {
@@ -218,18 +233,39 @@
             color: #888;
             font-size: 13px;
             font-weight: 500;
+            gap: 12px;
         }
 
         .score {
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .score-high {
+            background: #2d5a3d;
+            color: #6fbf73;
+        }
+
+        .score-medium {
+            background: #2d4a5a;
             color: #4da6ff;
+        }
+
+        .score-low {
+            background: #5a3d2d;
+            color: #ff9f43;
         }
 
         .free-status {
             color: #6fbf73;
+            font-weight: 600;
         }
 
         .paid-status {
             color: #ff9f43;
+            font-weight: 600;
         }
 
         .info-badge {
@@ -360,18 +396,28 @@
                 }
 
                 const events = parseResults(data.ranking);
-                const cardsHtml = events.map(event => `
-                    <div class="event-card">
-                        <div class="event-name">${escapeHtml(event.name)}</div>
-                        <div class="event-description">${escapeHtml(event.description)}</div>
-                        <div class="event-meta">
-                            <span class="score">Score: ${event.score}</span>
-                            <span class="${event.isPaid ? 'paid-status' : 'free-status'}">
-                                ${event.isPaid ? 'PAID' : 'FREE'}
-                            </span>
+                const cardsHtml = events.map((event, index) => {
+                    const scoreNum = parseInt(event.score);
+                    let scoreClass = 'score-low';
+                    if (scoreNum >= 8) scoreClass = 'score-high';
+                    else if (scoreNum >= 6) scoreClass = 'score-medium';
+
+                    return `
+                        <div class="event-card">
+                            <div class="event-number">${index + 1}</div>
+                            <div class="event-content">
+                                <div class="event-name">${escapeHtml(event.name)}</div>
+                                <div class="event-description">${escapeHtml(event.description)}</div>
+                                <div class="event-meta">
+                                    <span class="score ${scoreClass}">${event.score}</span>
+                                    <span class="${event.isPaid ? 'paid-status' : 'free-status'}">
+                                        ${event.isPaid ? 'PAID' : 'FREE'}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
 
                 document.getElementById("resultContent").innerHTML = cardsHtml;
                 document.getElementById("infoBadge").textContent =
