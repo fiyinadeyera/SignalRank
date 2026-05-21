@@ -267,11 +267,50 @@
             flex: 1;
         }
 
+        .event-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
         .event-name {
             font-weight: 600;
             color: #fff;
-            margin-bottom: 8px;
             font-size: 15px;
+            flex: 1;
+        }
+
+        .save-btn {
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 4px 8px;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .save-btn:hover {
+            color: #4da6ff;
+            transform: scale(1.2);
+        }
+
+        .save-btn.saved {
+            color: #ff6b6b;
+        }
+
+        .event-reason {
+            color: #4da6ff;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            padding: 8px;
+            background: rgba(77, 166, 255, 0.1);
+            border-radius: 8px;
+            border-left: 3px solid #4da6ff;
         }
 
         .event-description {
@@ -374,6 +413,7 @@
     <div class="container">
         <div class="header">
             <h1>Signal Rank</h1>
+            <p>Find events that match your specific goals</p>
         </div>
 
         <div class="content">
@@ -438,11 +478,16 @@
                 } else if (skipUntilFirstEvent && !line.match(/^[A-Z]/)) {
                     // Skip intro text until we find something that looks like an event name
                     continue;
+                } else if (line.startsWith('REASON:')) {
+                    // Extract reason why it matches
+                    if (currentEvent) {
+                        currentEvent.reason = line.replace('REASON:', '').trim();
+                    }
                 } else if (currentEvent === null && line && !line.includes('Score:')) {
                     // Start a new event if we don't have one
-                    currentEvent = { name: line, description: '', score: '?/10', isPaid: false };
-                } else if (currentEvent && !line.startsWith('Score:') && line) {
-                    // Add to current event description
+                    currentEvent = { name: line, description: '', reason: '', score: '?/10', isPaid: false };
+                } else if (currentEvent && !line.startsWith('Score:') && !line.startsWith('REASON:') && line) {
+                    // Add to current event description (for any extra info)
                     if (currentEvent.description) {
                         currentEvent.description += ' ' + line;
                     } else {
@@ -496,6 +541,9 @@
                 const rankedEvents = parseResults(data.ranking);
                 const allEvents = data.events || [];
 
+                // Load saved events from localStorage
+                const savedEvents = JSON.parse(localStorage.getItem('savedEvents') || '{}');
+
                 const cardsHtml = rankedEvents.map((event, index) => {
                     const scoreNum = parseInt(event.score);
                     let scoreClass = 'score-low';
@@ -506,6 +554,7 @@
                     const fullEvent = allEvents.find(e => e.name.toLowerCase() === event.name.toLowerCase());
                     const eventUrl = fullEvent?.url || '';
                     const eventTime = fullEvent?.start || '';
+                    const eventId = event.name; // Use event name as ID for saved events
 
                     // Format time (extract time from start if available)
                     let timeStr = '';
@@ -514,11 +563,19 @@
                         timeStr = parts.length > 1 ? parts[1] : parts[0];
                     }
 
+                    const isSaved = savedEvents[eventId] ? true : false;
+
                     return `
                         <div class="event-card">
                             <div class="event-number">${index + 1}</div>
                             <div class="event-content">
-                                <div class="event-name">${escapeHtml(event.name)}</div>
+                                <div class="event-header">
+                                    <div class="event-name">${escapeHtml(event.name)}</div>
+                                    <button class="save-btn ${isSaved ? 'saved' : ''}" data-event-id="${escapeHtml(eventId)}" title="${isSaved ? 'Remove from favorites' : 'Save to favorites'}">
+                                        ♥
+                                    </button>
+                                </div>
+                                ${event.reason ? `<div class="event-reason">Matches your goals: ${escapeHtml(event.reason)}</div>` : ''}
                                 <div class="event-description">${escapeHtml(event.description)}</div>
                                 ${timeStr ? `<div class="event-details">${timeStr}</div>` : ''}
                                 <div class="event-meta">
@@ -540,6 +597,26 @@
                         : `Sample events (add API keys for live events)`;
 
                 document.getElementById("result").classList.add("show");
+
+                // Add event listeners for save buttons
+                document.querySelectorAll('.save-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const eventId = btn.getAttribute('data-event-id');
+                        const saved = JSON.parse(localStorage.getItem('savedEvents') || '{}');
+
+                        if (saved[eventId]) {
+                            delete saved[eventId];
+                            btn.classList.remove('saved');
+                        } else {
+                            saved[eventId] = true;
+                            btn.classList.add('saved');
+                        }
+
+                        localStorage.setItem('savedEvents', JSON.stringify(saved));
+                    });
+                });
+
                 showLoading(false);
             } catch (error) {
                 showError("Error: " + error.message);

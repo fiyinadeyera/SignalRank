@@ -205,11 +205,11 @@ Available events:
 Output ONLY the 6 events in this exact format. NO intro text, NO numbers, NO extra text:
 
 EVENT NAME
-Why it matches their goals (1 sentence)
+REASON: Why it matches their goals (1 sentence)
 Score: X/10 | FREE or PAID
 
 EVENT NAME
-Why it matches their goals (1 sentence)
+REASON: Why it matches their goals (1 sentence)
 Score: X/10 | FREE or PAID
 
 [repeat for all 6 events]"""
