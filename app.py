@@ -395,11 +395,21 @@ def filter_events_by_date(events, start_date, end_date):
     return filtered
 
 
+def filter_events_by_price(events, price_filter):
+    """Filter events by price preference."""
+    if price_filter == "free":
+        return [event for event in events if event.get("is_free") is True]
+    if price_filter == "paid":
+        return [event for event in events if event.get("is_free") is False]
+    return events
+
+
 @app.route("/api/optimize", methods=["POST"])
 def optimize():
     data = request.json
     goals = data.get("goals", "")
     date_filter = data.get("dateFilter", "this-week")
+    price_filter = data.get("priceFilter", "free")
 
     if not goals:
         return jsonify({"error": "Please enter your goals"}), 400
@@ -420,9 +430,10 @@ def optimize():
     # Filter by date
     start_date, end_date = get_date_range(date_filter)
     all_events = filter_events_by_date(all_events, start_date, end_date)
+    all_events = filter_events_by_price(all_events, price_filter)
 
     if not all_events:
-        return jsonify({"error": "No events found for the selected date range"}), 400
+        return jsonify({"error": "No events found for the selected filters"}), 400
 
     try:
         ranked = rank_events(all_events, goals)

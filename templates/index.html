@@ -4,14 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Signal Rank</title>
+    <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        body {
+            font-family: "Satoshi", system-ui, -apple-system, "Segoe UI", sans-serif;
+        }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
         .spinner {
             animation: spin 1s linear infinite;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(147, 197, 253, 0.55); }
+            50% { box-shadow: 0 0 0 10px rgba(147, 197, 253, 0); }
+        }
+        .mic-listening {
+            animation: pulseGlow 1.3s ease-in-out infinite;
         }
         @keyframes slideIn {
             from {
@@ -26,67 +37,115 @@
         .slide-in {
             animation: slideIn 0.4s ease;
         }
+        .fade-in {
+            animation: slideIn 0.25s ease;
+        }
     </style>
 </head>
-<body class="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 min-h-screen">
-    <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="w-full max-w-2xl">
+<body class="bg-slate-950 min-h-screen text-slate-100">
+    <div class="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.16),_transparent_45%),radial-gradient(circle_at_70%_10%,_rgba(168,85,247,0.14),_transparent_38%)]">
+        <div class="mx-auto w-full max-w-3xl px-4 py-8 md:py-12">
             <!-- Header -->
-            <div class="text-center mb-8">
-                <h1 class="text-5xl font-bold text-white mb-2">Signal Rank</h1>
-                <p class="text-lg text-slate-400">Find events that match your specific goals</p>
+            <div class="mb-8 text-center">
+                <div class="mb-4">
+                    <div class="inline-flex items-center gap-2 rounded-full border border-slate-500/40 bg-slate-700/30 px-3 py-1 text-xs font-medium text-slate-200">
+                        AI Event Discovery
+                    </div>
+                </div>
+                <h1 class="text-4xl md:text-5xl font-bold tracking-tight text-white mb-3">SignalRank</h1>
+                <p class="text-base md:text-lg text-slate-300 max-w-xl mx-auto">Local events, ranked for you.</p>
             </div>
 
             <!-- Main Card -->
-            <div class="bg-slate-800/50 backdrop-blur-xl border border-slate-700 rounded-3xl shadow-2xl overflow-hidden">
-                <div class="p-8 md:p-12">
+            <div class="bg-slate-900/75 backdrop-blur-xl border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden">
+                <div class="p-6 md:p-8">
                     <!-- Form -->
-                    <form id="goalForm" class="space-y-6">
+                    <form id="goalForm" class="space-y-4">
                         <!-- Goals Input -->
                         <div>
-                            <label for="goals" class="block text-sm font-semibold text-slate-200 mb-3">What are you looking for?</label>
-                            <textarea
-                                id="goals"
-                                placeholder="career networking, comedy shows, product launches, jam sessions..."
-                                class="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
-                                rows="4"
-                            ></textarea>
-                        </div>
-
-                        <!-- Date Filters -->
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-200 mb-3">When</label>
-                            <div class="flex gap-3">
-                                <button type="button" class="filter-btn flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium active data-filter='this-week' hover:bg-blue-700 transition">This Week</button>
-                                <button type="button" class="filter-btn flex-1 px-4 py-2 bg-slate-700 text-slate-300 rounded-lg font-medium hover:bg-slate-600 transition data-filter='today'">Today</button>
-                                <button type="button" class="filter-btn flex-1 px-4 py-2 bg-slate-700 text-slate-300 rounded-lg font-medium hover:bg-slate-600 transition data-filter='next-week'">Next Week</button>
+                            <div class="flex flex-col gap-2 mb-3 md:flex-row md:items-center md:justify-between">
+                                <label for="goals" class="block text-sm font-semibold text-slate-100">Describe your goal</label>
+                                <div class="flex flex-wrap gap-1.5 justify-start md:justify-end" id="goalPresets">
+                                    <button type="button" class="preset-chip px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-800 border border-slate-600 text-slate-300 hover:bg-slate-700 transition" data-text="networking events">Networking</button>
+                                    <button type="button" class="preset-chip px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-800 border border-slate-600 text-slate-300 hover:bg-slate-700 transition" data-text="comedy shows">Comedy</button>
+                                    <button type="button" class="preset-chip px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-800 border border-slate-600 text-slate-300 hover:bg-slate-700 transition" data-text="product launches">Product</button>
+                                </div>
                             </div>
-                            <input type="hidden" id="dateFilter" value="this-week">
+                            <div class="relative">
+                                <textarea
+                                    id="goals"
+                                    placeholder="Example: I want founder networking events and product meetups this week"
+                                    class="w-full px-4 py-3 pr-12 pb-12 bg-slate-800/80 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition resize-none"
+                                    rows="3"
+                                ></textarea>
+                                <button
+                                    id="voiceBtn"
+                                    type="button"
+                                    class="absolute right-3 bottom-3 p-2 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 border border-slate-500/70 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Dictate goals"
+                                    aria-label="Dictate goals with microphone"
+                                >
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.8"
+                                        class="w-5 h-5"
+                                        aria-hidden="true"
+                                    >
+                                        <rect x="9" y="3" width="6" height="11" rx="3"></rect>
+                                        <path d="M5.5 10.5a6.5 6.5 0 1 0 13 0"></path>
+                                        <path d="M12 17v4"></path>
+                                        <path d="M9 21h6"></path>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Submit Button -->
                         <button
+                            id="submitBtn"
                             type="submit"
-                            class="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg transition transform hover:scale-105 active:scale-95 shadow-lg"
+                            class="w-full py-2.5 text-sm bg-gradient-to-r from-blue-100 to-sky-100 hover:from-blue-50 hover:to-sky-50 text-slate-900 font-semibold rounded-lg transition transform hover:scale-[1.01] active:scale-[0.99] shadow-md shadow-blue-900/20"
                         >
                             Find Events
                         </button>
+
+                        <div class="grid grid-cols-1 md:grid-cols-[auto,1fr] gap-3 items-end">
+                            <div>
+                                <label for="priceFilter" class="block text-xs text-slate-400 mb-1.5">Budget</label>
+                                <select id="priceFilter" class="w-full md:w-auto min-w-[110px] px-2 py-1.5 text-xs rounded-md bg-slate-800 border border-slate-600 text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-300">
+                                    <option value="free" selected>Free</option>
+                                    <option value="paid">Paid</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1.5">Time Range</label>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button type="button" data-filter="this-week" class="filter-btn w-full px-3 py-2 text-xs bg-blue-100 text-slate-900 rounded-md font-medium hover:bg-blue-50 border border-blue-200 transition">This Week</button>
+                                    <button type="button" data-filter="today" class="filter-btn w-full px-3 py-2 text-xs bg-slate-800 text-slate-300 rounded-md font-medium border border-slate-600 hover:bg-slate-700 transition">Today</button>
+                                    <button type="button" data-filter="next-week" class="filter-btn w-full px-3 py-2 text-xs bg-slate-800 text-slate-300 rounded-md font-medium border border-slate-600 hover:bg-slate-700 transition">Next Week</button>
+                                </div>
+                                <input type="hidden" id="dateFilter" value="this-week">
+                            </div>
+                        </div>
                     </form>
 
                     <!-- Error -->
                     <div id="error" class="hidden mt-6 p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-300 text-sm"></div>
 
                     <!-- Loading -->
-                    <div id="loading" class="hidden mt-8 text-center">
+                    <div id="loading" class="hidden mt-8 text-center bg-slate-800/50 border border-slate-700 rounded-xl p-4 fade-in">
                         <div class="spinner w-10 h-10 border-4 border-slate-600 border-t-blue-500 rounded-full mx-auto mb-3"></div>
                         <p class="text-slate-400">Ranking events for you...</p>
                     </div>
 
                     <!-- Results -->
                     <div id="result" class="hidden mt-8 space-y-4">
-                        <h2 class="text-2xl font-bold text-white">Your Rankings</h2>
+                        <h2 class="text-xl font-semibold text-white">Top Matches</h2>
                         <div class="space-y-3" id="resultContent"></div>
-                        <div id="infoBadge" class="mt-6 inline-block px-4 py-2 bg-blue-600/20 border border-blue-500 text-blue-300 rounded-lg text-sm font-medium"></div>
+                        <div id="infoBadge" class="mt-6 inline-block px-4 py-2 bg-blue-500/10 border border-blue-300/50 text-blue-200 rounded-lg text-sm font-medium"></div>
                     </div>
                 </div>
             </div>
@@ -139,17 +198,86 @@
             return events.slice(0, 6);
         }
 
-        // Handle filter button clicks
-        document.querySelectorAll(".filter-btn").forEach(btn => {
+        function setButtonGroupState(buttons, activeBtn) {
+            buttons.forEach((btn) => {
+                btn.classList.remove("bg-blue-100", "border-blue-200", "text-slate-900");
+                btn.classList.add("bg-slate-800", "text-slate-300", "border", "border-slate-600");
+            });
+            activeBtn.classList.remove("bg-slate-800", "text-slate-300", "border", "border-slate-600");
+            activeBtn.classList.add("bg-blue-100", "border-blue-200", "text-slate-900");
+        }
+
+        // Handle date filter button clicks
+        const dateButtons = Array.from(document.querySelectorAll(".filter-btn"));
+        dateButtons.forEach((btn) => {
             btn.addEventListener("click", (e) => {
                 e.preventDefault();
-                document.querySelectorAll(".filter-btn").forEach(b => {
-                    b.classList.remove("bg-blue-600", "text-white");
-                    b.classList.add("bg-slate-700", "text-slate-300");
-                });
-                btn.classList.remove("bg-slate-700", "text-slate-300");
-                btn.classList.add("bg-blue-600", "text-white");
+                setButtonGroupState(dateButtons, btn);
                 document.getElementById("dateFilter").value = btn.getAttribute("data-filter");
+            });
+        });
+
+        // Voice input support (Web Speech API)
+        const goalsInput = document.getElementById("goals");
+        const voiceBtn = document.getElementById("voiceBtn");
+        const submitBtn = document.getElementById("submitBtn");
+        const defaultSubmitText = submitBtn.textContent.trim();
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        let isListening = false;
+
+        if (!SpeechRecognition) {
+            voiceBtn.disabled = true;
+        } else {
+            recognition = new SpeechRecognition();
+            recognition.lang = "en-US";
+            recognition.interimResults = true;
+            recognition.continuous = false;
+
+            recognition.addEventListener("start", () => {
+                isListening = true;
+                voiceBtn.classList.add("bg-blue-100", "text-slate-900", "border-blue-200");
+                voiceBtn.classList.add("mic-listening");
+            });
+
+            recognition.addEventListener("result", (event) => {
+                let transcript = "";
+                for (let i = event.resultIndex; i < event.results.length; i += 1) {
+                    transcript += event.results[i][0].transcript;
+                }
+
+                const currentText = goalsInput.value.trim();
+                goalsInput.value = currentText ? `${currentText} ${transcript.trim()}` : transcript.trim();
+            });
+
+            recognition.addEventListener("end", () => {
+                isListening = false;
+                voiceBtn.classList.remove("bg-blue-100", "text-slate-900", "border-blue-200");
+                voiceBtn.classList.remove("mic-listening");
+            });
+
+            recognition.addEventListener("error", (event) => {
+                isListening = false;
+                voiceBtn.classList.remove("bg-blue-100", "text-slate-900", "border-blue-200");
+                voiceBtn.classList.remove("mic-listening");
+            });
+
+            voiceBtn.addEventListener("click", () => {
+                if (!recognition) return;
+                if (isListening) {
+                    recognition.stop();
+                } else {
+                    recognition.start();
+                }
+            });
+        }
+
+        document.querySelectorAll(".preset-chip").forEach(chip => {
+            chip.addEventListener("click", () => {
+                const text = chip.getAttribute("data-text");
+                const current = goalsInput.value.trim();
+                goalsInput.value = current ? `${current}, ${text}` : text;
+                goalsInput.focus();
             });
         });
 
@@ -158,6 +286,7 @@
 
             const goals = document.getElementById("goals").value.trim();
             const dateFilter = document.getElementById("dateFilter").value;
+            const priceFilter = document.getElementById("priceFilter").value;
 
             if (!goals) {
                 showError("Please enter what you're looking for");
@@ -166,12 +295,15 @@
 
             showLoading(true);
             showError("");
+            submitBtn.disabled = true;
+            submitBtn.classList.add("opacity-70", "cursor-not-allowed");
+            submitBtn.textContent = "Finding...";
 
             try {
                 const response = await fetch("/api/optimize", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ goals, dateFilter })
+                    body: JSON.stringify({ goals, dateFilter, priceFilter })
                 });
 
                 const data = await response.json();
@@ -179,6 +311,9 @@
                 if (!response.ok) {
                     showError(data.error || "Something went wrong");
                     showLoading(false);
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove("opacity-70", "cursor-not-allowed");
+                    submitBtn.textContent = defaultSubmitText;
                     return;
                 }
 
@@ -206,17 +341,17 @@
                     const isSaved = savedEvents[eventId] ? true : false;
 
                     return `
-                        <div class="bg-slate-700/30 border border-slate-600 rounded-xl p-4 hover:bg-slate-700/50 transition">
+                        <div class="bg-slate-800/45 border border-slate-600/80 rounded-xl p-4 hover:bg-slate-800/70 transition">
                             <div class="flex gap-4">
-                                <div class="text-2xl font-bold text-blue-400 flex-shrink-0 w-8">${index + 1}</div>
+                                <div class="text-xl font-semibold text-slate-300 flex-shrink-0 w-7">${index + 1}</div>
                                 <div class="flex-1">
                                     <div class="flex justify-between items-start gap-2 mb-2">
-                                        <h3 class="font-semibold text-white text-base">${escapeHtml(event.name)}</h3>
-                                        <button class="save-btn text-xl flex-shrink-0 transition ${isSaved ? 'text-red-400' : 'text-slate-500 hover:text-blue-400'}" data-event-id="${escapeHtml(eventId)}" title="${isSaved ? 'Remove from favorites' : 'Save to favorites'}">
+                                        <h3 class="font-medium text-slate-100 text-[15px]">${escapeHtml(event.name)}</h3>
+                                        <button class="save-btn text-xl flex-shrink-0 transition ${isSaved ? 'text-rose-400' : 'text-slate-500 hover:text-slate-300'}" data-event-id="${escapeHtml(eventId)}" title="${isSaved ? 'Remove from favorites' : 'Save to favorites'}">
                                             ♥
                                         </button>
                                     </div>
-                                    ${event.reason ? `<div class="text-sm text-blue-300 mb-2">Matches: ${escapeHtml(event.reason)}</div>` : ''}
+                                    ${event.reason ? `<div class="text-sm text-sky-200/90 mb-2">Matches: ${escapeHtml(event.reason)}</div>` : ''}
                                     ${event.description ? `<p class="text-sm text-slate-400 mb-3">${escapeHtml(event.description)}</p>` : ''}
                                     <div class="flex items-center gap-3 flex-wrap">
                                         <span class="px-2 py-1 rounded ${scoreBg} text-xs font-semibold">${event.score}</span>
@@ -263,9 +398,18 @@
                 });
 
                 showLoading(false);
+                submitBtn.disabled = false;
+                submitBtn.classList.remove("opacity-70", "cursor-not-allowed");
+                submitBtn.textContent = "Done";
+                setTimeout(() => {
+                    submitBtn.textContent = defaultSubmitText;
+                }, 800);
             } catch (error) {
                 showError("Error: " + error.message);
                 showLoading(false);
+                submitBtn.disabled = false;
+                submitBtn.classList.remove("opacity-70", "cursor-not-allowed");
+                submitBtn.textContent = defaultSubmitText;
             }
         });
 
