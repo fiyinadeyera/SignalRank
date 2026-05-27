@@ -7,6 +7,13 @@ from dotenv import dotenv_values
 from datetime import datetime, timedelta
 import requests
 import anthropic
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+import time
 
 app = Flask(__name__)
 
@@ -189,6 +196,65 @@ def fetch_eventbrite_events():
         return []
 
 
+def fetch_luma_events():
+    """Scrape Luma.com for NYC tech events (temporary until API access)"""
+    try:
+        options = webdriver.ChromeOptions()
+        options.add_argument('--headless')
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-gpu')
+        options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
+
+        driver = webdriver.Chrome(
+            service=Service(ChromeDriverManager().install()),
+            options=options
+        )
+
+        driver.get("https://lu.ma/new-york")
+        time.sleep(3)
+
+        events = []
+
+        # Try to find any event containers (Luma uses various structures)
+        try:
+            # Wait for page to load
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_all_elements_located((By.TAG_NAME, "a"))
+            )
+
+            # Get all links that might be event pages
+            all_links = driver.find_elements(By.TAG_NAME, "a")
+
+            for link in all_links[:20]:
+                try:
+                    href = link.get_attribute("href")
+                    text = link.text.strip()
+
+                    # Luma event links typically contain /event/
+                    if href and "/event/" in href and text and len(text) > 3:
+                        events.append({
+                            "name": text[:100],
+                            "description": "Tech event from Luma",
+                            "start": (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d 18:00"),
+                            "venue": "NYC",
+                            "is_free": True,
+                            "url": href,
+                        })
+                except:
+                    continue
+
+        except Exception as e:
+            pass
+
+        driver.quit()
+        return events[:8]
+
+    except Exception as e:
+        # Fail gracefully - return empty list if Selenium fails
+        return []
+
+
 def rank_events(events, user_goals):
     client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
 
@@ -300,6 +366,7 @@ def optimize():
     all_events.extend(fetch_meetup_events())
     all_events.extend(fetch_ticketmaster_events())
     all_events.extend(fetch_eventbrite_events())
+    all_events.extend(fetch_luma_events())  # Scrape Luma for tech events
 
     if not all_events:
         all_events = SAMPLE_EVENTS
@@ -328,4 +395,4 @@ def optimize():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=8000, debug=True)
