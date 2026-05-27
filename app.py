@@ -14,8 +14,29 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 import time
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = Flask(__name__)
+
+# Cache system (in-memory with TTL)
+_cache = {}
+CACHE_TTL = 3600  # 1 hour
+
+def _get_cache_key(source_name):
+    return f"events_{source_name}"
+
+def _get_cached(source_name):
+    key = _get_cache_key(source_name)
+    if key in _cache:
+        data, timestamp = _cache[key]
+        if time.time() - timestamp < CACHE_TTL:
+            return data
+    return None
+
+def _set_cache(source_name, data):
+    key = _get_cache_key(source_name)
+    _cache[key] = (data, time.time())
 
 _env = dotenv_values(os.path.join(os.path.dirname(__file__), ".env"))
 MEETUP_KEY = os.environ.get("MEETUP_API_KEY") or _env.get("MEETUP_API_KEY")
@@ -77,6 +98,11 @@ SAMPLE_EVENTS = [
 
 def fetch_meetup_events():
     """Scrape Meetup.com for NYC events"""
+    # Check cache first
+    cached = _get_cached("meetup")
+    if cached is not None:
+        return cached
+
     try:
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
@@ -127,13 +153,20 @@ def fetch_meetup_events():
             pass
 
         driver.quit()
-        return events[:10]
+        result = events[:10]
+        _set_cache("meetup", result)
+        return result
 
     except Exception as e:
         return []
 
 
 def fetch_ticketmaster_events():
+    # Check cache first
+    cached = _get_cached("ticketmaster")
+    if cached is not None:
+        return cached
+
     if not TICKETMASTER_KEY or TICKETMASTER_KEY == "your_key_here":
         return []
 
@@ -169,6 +202,7 @@ def fetch_ticketmaster_events():
                 "url": e.get("url", ""),
             })
 
+        _set_cache("ticketmaster", events)
         return events
     except Exception:
         return []
@@ -176,6 +210,11 @@ def fetch_ticketmaster_events():
 
 def fetch_eventbrite_events():
     """Scrape Eventbrite for NYC events (Eventbrite API doesn't support public search)"""
+    # Check cache first
+    cached = _get_cached("eventbrite")
+    if cached is not None:
+        return cached
+
     try:
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
@@ -224,7 +263,9 @@ def fetch_eventbrite_events():
             pass
 
         driver.quit()
-        return events[:10]
+        result = events[:10]
+        _set_cache("eventbrite", result)
+        return result
 
     except Exception:
         return []
@@ -232,6 +273,11 @@ def fetch_eventbrite_events():
 
 def fetch_luma_events():
     """Scrape Luma.com for NYC tech events"""
+    # Check cache first
+    cached = _get_cached("luma")
+    if cached is not None:
+        return cached
+
     try:
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
@@ -291,7 +337,9 @@ def fetch_luma_events():
             pass
 
         driver.quit()
-        return events[:10]
+        result = events[:10]
+        _set_cache("luma", result)
+        return result
 
     except Exception as e:
         return []
@@ -415,11 +463,20 @@ def optimize():
         return jsonify({"error": "Please enter your goals"}), 400
 
     all_events = []
-    # Fetch from all sources independently
-    all_events.extend(fetch_ticketmaster_events())
-    all_events.extend(fetch_meetup_events())
-    all_events.extend(fetch_eventbrite_events())
-    all_events.extend(fetch_luma_events())
+    # Fetch from all sources in parallel
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {
+            executor.submit(fetch_ticketmaster_events): "ticketmaster",
+            executor.submit(fetch_meetup_events): "meetup",
+            executor.submit(fetch_eventbrite_events): "eventbrite",
+            executor.submit(fetch_luma_events): "luma",
+        }
+        for future in as_completed(futures):
+            try:
+                events = future.result(timeout=30)
+                all_events.extend(events)
+            except Exception:
+                pass
 
     if not all_events:
         all_events = SAMPLE_EVENTS
