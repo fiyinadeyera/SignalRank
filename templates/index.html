@@ -64,6 +64,13 @@
         button:active:not(:disabled) {
             transform: translateY(0);
         }
+        button:focus-visible {
+            outline: 2px solid rgba(59, 130, 246, 0.6);
+            outline-offset: 2px;
+        }
+        input:focus-visible, textarea:focus-visible, select:focus-visible {
+            outline: none;
+        }
     </style>
 </head>
 <body class="bg-slate-950 min-h-screen text-slate-100">
@@ -102,6 +109,8 @@
                                     placeholder="Example: I want founder networking events and product meetups this week"
                                     class="w-full px-4 py-3 pr-24 pb-12 bg-slate-800/80 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition resize-none"
                                     rows="3"
+                                    aria-label="Describe your event goals and preferences"
+                                    aria-describedby="charCount"
                                 ></textarea>
                                 <div class="absolute right-3 bottom-3 flex gap-2">
                                     <button
@@ -233,11 +242,11 @@
                                 <p class="text-sm text-slate-400 mt-1" id="resultCount"></p>
                             </div>
                             <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-                                <div class="flex gap-2">
-                                    <button id="rankingsTab" class="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Rankings</button>
-                                    <button id="favoritesTab" class="px-4 py-2 text-sm font-medium bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition">★ <span id="favCount">0</span></button>
+                                <div class="flex gap-2" role="tablist">
+                                    <button id="rankingsTab" class="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-300 focus:outline-none transition" role="tab" aria-selected="true" aria-label="View ranked events">Rankings</button>
+                                    <button id="favoritesTab" class="px-4 py-2 text-sm font-medium bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 focus:ring-2 focus:ring-blue-300 focus:outline-none transition" role="tab" aria-selected="false" aria-label="View saved favorite events">★ <span id="favCount">0</span></button>
                                 </div>
-                                <select id="sortBy" class="px-3 py-2 text-sm bg-slate-700 text-slate-200 rounded-lg border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                                <select id="sortBy" class="px-3 py-2 text-sm bg-slate-700 text-slate-200 rounded-lg border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-300" aria-label="Sort results by score, price, or date">
                                     <option value="score">Sort by Score</option>
                                     <option value="price">Free First</option>
                                     <option value="date">Soonest First</option>
@@ -518,7 +527,13 @@
                 // Function to render cards with current sort
                 function renderCards(eventsToRender) {
                     if (eventsToRender.length === 0) {
-                        return '<div class="text-center py-8 text-slate-400">No events found with this filter. Try adjusting your preferences.</div>';
+                        return `
+                            <div class="text-center py-12 px-6">
+                                <div class="text-5xl mb-4">🔍</div>
+                                <h3 class="text-lg font-semibold text-slate-200 mb-2">No events found</h3>
+                                <p class="text-slate-400 text-sm max-w-md mx-auto">We couldn't find events matching your criteria. Try adjusting your time range, budget, or search terms.</p>
+                            </div>
+                        `;
                     }
 
                     return eventsToRender.map((event, index) => {
@@ -618,10 +633,14 @@
                 showLoading(false);
                 submitBtn.disabled = false;
                 submitBtn.classList.remove("opacity-70", "cursor-not-allowed");
-                submitBtn.textContent = "Done";
+
+                // Success feedback
+                submitBtn.textContent = "✓ Found " + rankedEvents.length + " events";
+                submitBtn.classList.add("success-check");
                 setTimeout(() => {
+                    submitBtn.classList.remove("success-check");
                     submitBtn.textContent = defaultSubmitText;
-                }, 800);
+                }, 1200);
 
                 // Setup tab switcher
                 setupTabs(data.events);
@@ -645,8 +664,10 @@
                 favoritesContent.classList.add('hidden');
                 rankingsTab.classList.add('bg-blue-600', 'text-white');
                 rankingsTab.classList.remove('bg-slate-700', 'text-slate-300');
+                rankingsTab.setAttribute('aria-selected', 'true');
                 favoritesTab.classList.remove('bg-blue-600', 'text-white');
                 favoritesTab.classList.add('bg-slate-700', 'text-slate-300');
+                favoritesTab.setAttribute('aria-selected', 'false');
             });
 
             favoritesTab.addEventListener('click', () => {
@@ -654,7 +675,13 @@
                 const favoriteEvents = allEvents.filter(e => saved[e.name]);
 
                 if (favoriteEvents.length === 0) {
-                    favoritesContent.innerHTML = '<p class="text-slate-400 text-center py-8">No favorites yet. Click the star to save events.</p>';
+                    favoritesContent.innerHTML = `
+                        <div class="text-center py-12 px-6">
+                            <div class="text-5xl mb-4">★</div>
+                            <h3 class="text-lg font-semibold text-slate-200 mb-2">No saved events yet</h3>
+                            <p class="text-slate-400 text-sm max-w-md mx-auto">Click the star icon on any event to save it for later. Your favorites will appear here.</p>
+                        </div>
+                    `;
                 } else {
                     favoritesContent.innerHTML = favoriteEvents.map((event, index) => `
                         <div class="bg-slate-800/45 border border-slate-600/80 rounded-xl p-4 hover:bg-slate-800/70 transition">
@@ -681,8 +708,10 @@
                 favoritesContent.classList.remove('hidden');
                 favoritesTab.classList.add('bg-blue-600', 'text-white');
                 favoritesTab.classList.remove('bg-slate-700', 'text-slate-300');
+                favoritesTab.setAttribute('aria-selected', 'true');
                 rankingsTab.classList.remove('bg-blue-600', 'text-white');
                 rankingsTab.classList.add('bg-slate-700', 'text-slate-300');
+                rankingsTab.setAttribute('aria-selected', 'false');
 
                 attachSaveListeners();
             });
