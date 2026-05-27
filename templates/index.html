@@ -243,11 +243,15 @@
             recognition.addEventListener("result", (event) => {
                 let transcript = "";
                 for (let i = event.resultIndex; i < event.results.length; i += 1) {
-                    transcript += event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        transcript += event.results[i][0].transcript;
+                    }
                 }
 
-                const currentText = goalsInput.value.trim();
-                goalsInput.value = currentText ? `${currentText} ${transcript.trim()}` : transcript.trim();
+                if (transcript.trim()) {
+                    const currentText = goalsInput.value.trim();
+                    goalsInput.value = currentText ? `${currentText} ${transcript.trim()}` : transcript.trim();
+                }
             });
 
             recognition.addEventListener("end", () => {
