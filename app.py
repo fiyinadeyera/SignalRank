@@ -152,52 +152,7 @@ def fetch_ticketmaster_events():
 
 
 def fetch_eventbrite_events():
-    if not EVENTBRITE_KEY or EVENTBRITE_KEY == "your_key_here":
-        return []
-
-    try:
-        start = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
-        end = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-        r = requests.get(
-            "https://www.eventbriteapi.com/v3/events/search/",
-            headers={"Authorization": f"Bearer {EVENTBRITE_KEY}"},
-            params={
-                "location.address": "New York, NY",
-                "location.within": "10mi",
-                "start_date.range_start": start,
-                "start_date.range_end": end,
-                "expand": "venue",
-                "page_size": 50,
-            },
-            timeout=5
-        )
-
-        if r.status_code != 200:
-            return []
-
-        events = []
-        for e in r.json().get("events", []):
-            venue = e.get("venue") or {}
-            is_free = e.get("is_free", False)
-            local_start = e.get("start", {}).get("local", "")
-            if local_start:
-                local_start = local_start.replace("T", " ")[:16]
-            events.append({
-                "name": e.get("name", {}).get("text", ""),
-                "description": (e.get("description", {}).get("text", "") or "")[:300],
-                "start": local_start,
-                "venue": venue.get("name", "TBD"),
-                "is_free": is_free,
-                "url": e.get("url", ""),
-            })
-        return events
-    except Exception:
-        return []
-
-
-def fetch_luma_events():
-    """Scrape Luma.com for NYC tech events (temporary until API access)"""
+    """Scrape Eventbrite for NYC tech and networking events"""
     try:
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
@@ -211,47 +166,121 @@ def fetch_luma_events():
             options=options
         )
 
-        driver.get("https://lu.ma/new-york")
+        # Search for tech events in NYC
+        driver.get("https://www.eventbrite.com/d/ny--new-york/tech/")
         time.sleep(3)
 
         events = []
 
-        # Try to find any event containers (Luma uses various structures)
         try:
-            # Wait for page to load
+            # Wait for event listings to load
             WebDriverWait(driver, 10).until(
-                EC.presence_of_all_elements_located((By.TAG_NAME, "a"))
+                EC.presence_of_all_elements_located((By.TAG_NAME, "article"))
             )
 
-            # Get all links that might be event pages
-            all_links = driver.find_elements(By.TAG_NAME, "a")
+            # Find all event articles
+            event_cards = driver.find_elements(By.TAG_NAME, "article")
 
-            for link in all_links[:20]:
+            for card in event_cards[:12]:
                 try:
-                    href = link.get_attribute("href")
-                    text = link.text.strip()
+                    # Get event name
+                    name_elem = card.find_element(By.TAG_NAME, "h3")
+                    name = name_elem.text.strip()
 
-                    # Luma event links typically contain /event/
-                    if href and "/event/" in href and text and len(text) > 3:
+                    # Get event link
+                    link_elem = card.find_element(By.TAG_NAME, "a")
+                    url = link_elem.get_attribute("href")
+
+                    # Get date/time if available
+                    time_elem = card.find_element(By.CLASS_NAME, "TextOverflow")
+                    start = time_elem.text.strip() if time_elem else (datetime.now() + timedelta(days=2)).strftime("%Y-%m-%d 18:00")
+
+                    if name:
                         events.append({
-                            "name": text[:100],
-                            "description": "Tech event from Luma",
-                            "start": (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d 18:00"),
-                            "venue": "NYC",
-                            "is_free": True,
-                            "url": href,
+                            "name": name[:100],
+                            "description": "Tech event on Eventbrite",
+                            "start": start,
+                            "venue": "New York",
+                            "is_free": False,
+                            "url": url,
                         })
                 except:
                     continue
 
-        except Exception as e:
+        except:
             pass
 
         driver.quit()
-        return events[:8]
+        return events[:10]
 
     except Exception as e:
-        # Fail gracefully - return empty list if Selenium fails
+        return []
+
+
+def fetch_luma_events():
+    """Scrape Luma.com for NYC tech events"""
+    try:
+        options = webdriver.ChromeOptions()
+        options.add_argument('--headless')
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-gpu')
+        options.add_argument('user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36')
+
+        driver = webdriver.Chrome(
+            service=Service(ChromeDriverManager().install()),
+            options=options
+        )
+
+        # Try NYC events page
+        driver.get("https://lu.ma/new-york")
+        time.sleep(4)
+
+        events = []
+        seen_names = set()
+
+        try:
+            # Wait for content
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_all_elements_located((By.TAG_NAME, "div"))
+            )
+
+            # Look for event links with /event/ path
+            all_elements = driver.find_elements(By.XPATH, "//*[contains(@href, '/event/')]")
+
+            for elem in all_elements[:15]:
+                try:
+                    href = elem.get_attribute("href")
+                    # Try to get text from the element or nearby
+                    text = elem.text.strip()
+
+                    # Also try to get from aria-label or title
+                    if not text:
+                        text = elem.get_attribute("aria-label") or elem.get_attribute("title")
+
+                    # Clean up text
+                    text = (text or "").strip()
+
+                    if text and len(text) > 3 and text not in seen_names:
+                        seen_names.add(text)
+                        events.append({
+                            "name": text[:100],
+                            "description": "Tech community event on Luma",
+                            "start": (datetime.now() + timedelta(days=2)).strftime("%Y-%m-%d 19:00"),
+                            "venue": "New York",
+                            "is_free": True,
+                            "url": href if href.startswith("http") else f"https://lu.ma{href}",
+                        })
+                except:
+                    continue
+
+        except:
+            pass
+
+        driver.quit()
+        return events[:10]
+
+    except Exception as e:
         return []
 
 
@@ -363,10 +392,13 @@ def optimize():
         return jsonify({"error": "Please enter your goals"}), 400
 
     all_events = []
-    all_events.extend(fetch_meetup_events())
+    # Primary: Ticketmaster API (fast and reliable)
     all_events.extend(fetch_ticketmaster_events())
-    all_events.extend(fetch_eventbrite_events())
-    all_events.extend(fetch_luma_events())  # Scrape Luma for tech events
+
+    # Backup: If we don't have enough events, enhance with Selenium scrapers
+    if len(all_events) < 8:
+        all_events.extend(fetch_eventbrite_events())
+        all_events.extend(fetch_luma_events())
 
     if not all_events:
         all_events = SAMPLE_EVENTS
