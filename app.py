@@ -405,14 +405,11 @@ def optimize():
         return jsonify({"error": "Please enter your goals"}), 400
 
     all_events = []
-    # Primary: Ticketmaster API (fast and reliable)
+    # Fetch from all sources independently
     all_events.extend(fetch_ticketmaster_events())
-
-    # Backup: If we don't have enough events, enhance with Selenium scrapers
-    if len(all_events) < 8:
-        all_events.extend(fetch_meetup_events())
-        all_events.extend(fetch_eventbrite_events())
-        all_events.extend(fetch_luma_events())
+    all_events.extend(fetch_meetup_events())
+    all_events.extend(fetch_eventbrite_events())
+    all_events.extend(fetch_luma_events())
 
     if not all_events:
         all_events = SAMPLE_EVENTS
