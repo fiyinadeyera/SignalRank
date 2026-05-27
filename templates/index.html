@@ -75,39 +75,51 @@
                                 <textarea
                                     id="goals"
                                     placeholder="Example: I want founder networking events and product meetups this week"
-                                    class="w-full px-4 py-3 pr-12 pb-12 bg-slate-800/80 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition resize-none"
+                                    class="w-full px-4 py-3 pr-24 pb-12 bg-slate-800/80 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition resize-none"
                                     rows="3"
                                 ></textarea>
-                                <button
-                                    id="voiceBtn"
-                                    type="button"
-                                    class="absolute right-3 bottom-3 p-2 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 border border-slate-500/70 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                                    title="Dictate goals"
-                                    aria-label="Dictate goals with microphone"
-                                >
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        stroke-width="1.8"
-                                        class="w-5 h-5"
-                                        aria-hidden="true"
+                                <div class="absolute right-3 bottom-3 flex gap-2">
+                                    <button
+                                        id="clearBtn"
+                                        type="button"
+                                        class="p-2 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 border border-slate-500/70 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                                        title="Clear input"
+                                        aria-label="Clear goals"
                                     >
-                                        <rect x="9" y="3" width="6" height="11" rx="3"></rect>
-                                        <path d="M5.5 10.5a6.5 6.5 0 1 0 13 0"></path>
-                                        <path d="M12 17v4"></path>
-                                        <path d="M9 21h6"></path>
-                                    </svg>
-                                </button>
+                                        ✕
+                                    </button>
+                                    <button
+                                        id="voiceBtn"
+                                        type="button"
+                                        class="p-2 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 border border-slate-500/70 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                        title="Dictate goals"
+                                        aria-label="Dictate goals with microphone"
+                                    >
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="1.8"
+                                            class="w-5 h-5"
+                                            aria-hidden="true"
+                                        >
+                                            <rect x="9" y="3" width="6" height="11" rx="3"></rect>
+                                            <path d="M5.5 10.5a6.5 6.5 0 1 0 13 0"></path>
+                                            <path d="M12 17v4"></path>
+                                            <path d="M9 21h6"></path>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
+                            <div class="text-xs text-slate-400 mt-1" id="charCount"></div>
                         </div>
 
                         <!-- Submit Button -->
                         <button
                             id="submitBtn"
                             type="submit"
-                            class="w-full py-2.5 text-sm bg-gradient-to-r from-blue-100 to-sky-100 hover:from-blue-50 hover:to-sky-50 text-slate-900 font-semibold rounded-lg transition transform hover:scale-[1.01] active:scale-[0.99] shadow-md shadow-blue-900/20"
+                            class="w-full py-2.5 text-sm bg-gradient-to-r from-blue-100 to-sky-100 hover:from-blue-50 hover:to-sky-50 text-slate-900 font-semibold rounded-lg transition transform hover:scale-[1.01] active:scale-[0.99] shadow-md shadow-blue-900/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                         >
                             Find Events
                         </button>
@@ -143,11 +155,21 @@
 
                     <!-- Results -->
                     <div id="result" class="hidden mt-8 space-y-4">
-                        <div class="flex items-center justify-between gap-4 mb-4">
-                            <h2 class="text-xl font-semibold text-white">Top Matches</h2>
-                            <div class="flex gap-2">
-                                <button id="rankingsTab" class="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition active-tab">Rankings</button>
-                                <button id="favoritesTab" class="px-4 py-2 text-sm font-medium bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition">Favorites</button>
+                        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <h2 class="text-xl font-semibold text-white">Top Matches</h2>
+                                <p class="text-sm text-slate-400 mt-1" id="resultCount"></p>
+                            </div>
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                                <div class="flex gap-2">
+                                    <button id="rankingsTab" class="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Rankings</button>
+                                    <button id="favoritesTab" class="px-4 py-2 text-sm font-medium bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition">★ <span id="favCount">0</span></button>
+                                </div>
+                                <select id="sortBy" class="px-3 py-2 text-sm bg-slate-700 text-slate-200 rounded-lg border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                                    <option value="score">Sort by Score</option>
+                                    <option value="price">Free First</option>
+                                    <option value="date">Soonest First</option>
+                                </select>
                             </div>
                         </div>
                         <div class="space-y-3" id="resultContent"></div>
@@ -227,17 +249,88 @@
         // Voice input support (Web Speech API)
         const goalsInput = document.getElementById("goals");
         const voiceBtn = document.getElementById("voiceBtn");
+        const clearBtn = document.getElementById("clearBtn");
         const submitBtn = document.getElementById("submitBtn");
-        const goalsInput = document.getElementById("goals");
+        const charCountEl = document.getElementById("charCount");
         const defaultSubmitText = submitBtn.textContent.trim();
 
-        // Enter key to submit
+        // Input validation and character count
+        function updateInputState() {
+            const len = goalsInput.value.trim().length;
+            const isValid = len >= 3;
+
+            submitBtn.disabled = !isValid;
+            clearBtn.disabled = len === 0;
+
+            if (len === 0) {
+                charCountEl.textContent = "";
+            } else {
+                charCountEl.textContent = `${len} characters`;
+            }
+        }
+
+        goalsInput.addEventListener("input", updateInputState);
         goalsInput.addEventListener("keydown", (e) => {
+            // Enter to submit
             if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                document.getElementById("goalForm").dispatchEvent(new Event("submit"));
+                if (!submitBtn.disabled) {
+                    document.getElementById("goalForm").dispatchEvent(new Event("submit"));
+                }
+            }
+            // Escape to clear
+            if (e.key === "Escape") {
+                goalsInput.value = "";
+                updateInputState();
+                goalsInput.focus();
             }
         });
+
+        // Clear button
+        clearBtn.addEventListener("click", () => {
+            goalsInput.value = "";
+            updateInputState();
+            goalsInput.focus();
+        });
+
+        // Update favorite count badge
+        function updateFavoriteCount() {
+            const saved = JSON.parse(localStorage.getItem('savedEvents') || '{}');
+            document.getElementById("favCount").textContent = Object.keys(saved).length;
+        }
+        updateFavoriteCount();
+
+        // Attach save button listeners
+        function attachSaveListeners() {
+            document.querySelectorAll('.save-btn').forEach(btn => {
+                btn.removeEventListener('click', saveBtnHandler);
+                btn.addEventListener('click', saveBtnHandler);
+            });
+        }
+
+        function saveBtnHandler(e) {
+            e.preventDefault();
+            const eventId = this.getAttribute('data-event-id');
+            const saved = JSON.parse(localStorage.getItem('savedEvents') || '{}');
+
+            if (saved[eventId]) {
+                delete saved[eventId];
+                this.classList.remove('text-yellow-400');
+                this.classList.add('text-slate-500');
+                this.textContent = '☆';
+            } else {
+                saved[eventId] = true;
+                this.classList.remove('text-slate-500');
+                this.classList.add('text-yellow-400');
+                this.textContent = '★';
+            }
+
+            localStorage.setItem('savedEvents', JSON.stringify(saved));
+            updateFavoriteCount();
+        }
+
+        // Initialize
+        updateInputState();
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = null;
         let isListening = false;
@@ -341,7 +434,17 @@
                 const allEvents = data.events || [];
                 const savedEvents = JSON.parse(localStorage.getItem('savedEvents') || '{}');
 
-                const cardsHtml = rankedEvents.map((event, index) => {
+                // Store for sorting
+                window.currentRankedEvents = rankedEvents;
+                window.currentAllEvents = allEvents;
+
+                // Function to render cards with current sort
+                function renderCards(eventsToRender) {
+                    if (eventsToRender.length === 0) {
+                        return '<div class="text-center py-8 text-slate-400">No events found with this filter. Try adjusting your preferences.</div>';
+                    }
+
+                    return eventsToRender.map((event, index) => {
                     const scoreNum = parseInt(event.score);
                     let scoreBg = 'bg-orange-900/30 text-orange-300';
                     if (scoreNum >= 8) scoreBg = 'bg-green-900/30 text-green-300';
@@ -385,9 +488,34 @@
                             </div>
                         </div>
                     `;
-                }).join('');
+                    }).join('');
+                }
 
+                // Initial render
+                const cardsHtml = renderCards(rankedEvents);
                 document.getElementById("resultContent").innerHTML = cardsHtml;
+                document.getElementById("resultCount").textContent = `Found ${rankedEvents.length} events`;
+
+                // Sort handler
+                const sortSelect = document.getElementById("sortBy");
+                sortSelect.addEventListener("change", () => {
+                    let sorted = [...window.currentRankedEvents];
+
+                    if (sortSelect.value === "score") {
+                        sorted.sort((a, b) => parseInt(b.score) - parseInt(a.score));
+                    } else if (sortSelect.value === "price") {
+                        sorted = sorted.filter(e => e.isPaid === false).concat(sorted.filter(e => e.isPaid === true));
+                    } else if (sortSelect.value === "date") {
+                        sorted.sort((a, b) => {
+                            const aDate = window.currentAllEvents.find(e => e.name === a.name)?.start || "";
+                            const bDate = window.currentAllEvents.find(e => e.name === b.name)?.start || "";
+                            return aDate.localeCompare(bDate);
+                        });
+                    }
+
+                    document.getElementById("resultContent").innerHTML = renderCards(sorted);
+                    attachSaveListeners();
+                });
                 document.getElementById("infoBadge").textContent =
                     data.is_live
                         ? `✓ Live events (${data.event_count} found)`
@@ -397,27 +525,7 @@
                 resultEl.classList.remove("hidden");
                 resultEl.classList.add("slide-in");
 
-                document.querySelectorAll('.save-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        const eventId = btn.getAttribute('data-event-id');
-                        const saved = JSON.parse(localStorage.getItem('savedEvents') || '{}');
-
-                        if (saved[eventId]) {
-                            delete saved[eventId];
-                            btn.classList.remove('text-yellow-400');
-                            btn.classList.add('text-slate-500');
-                            btn.textContent = '☆';
-                        } else {
-                            saved[eventId] = true;
-                            btn.classList.remove('text-slate-500');
-                            btn.classList.add('text-yellow-400');
-                            btn.textContent = '★';
-                        }
-
-                        localStorage.setItem('savedEvents', JSON.stringify(saved));
-                    });
-                });
+                attachSaveListeners();
 
                 showLoading(false);
                 submitBtn.disabled = false;
@@ -488,27 +596,7 @@
                 rankingsTab.classList.remove('bg-blue-600', 'text-white');
                 rankingsTab.classList.add('bg-slate-700', 'text-slate-300');
 
-                // Reattach save button listeners
-                document.querySelectorAll('.save-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        const eventId = btn.getAttribute('data-event-id');
-                        const saved = JSON.parse(localStorage.getItem('savedEvents') || '{}');
-                        if (saved[eventId]) {
-                            delete saved[eventId];
-                            btn.classList.remove('text-yellow-400');
-                            btn.classList.add('text-slate-500');
-                            btn.textContent = '☆';
-                        } else {
-                            saved[eventId] = true;
-                            btn.classList.remove('text-slate-500');
-                            btn.classList.add('text-yellow-400');
-                            btn.textContent = '★';
-                        }
-                        localStorage.setItem('savedEvents', JSON.stringify(saved));
-                        favoritesTab.click();
-                    });
-                });
+                attachSaveListeners();
             });
         }
 
