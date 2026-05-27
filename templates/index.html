@@ -40,6 +40,30 @@
         .fade-in {
             animation: slideIn 0.25s ease;
         }
+        @keyframes pulse-scale {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .skeleton {
+            animation: pulse-scale 2s ease-in-out infinite;
+        }
+        @keyframes success-check {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .success-check {
+            animation: success-check 0.4s ease-out;
+        }
+        button, input, select, textarea {
+            transition: all 0.2s ease;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-1px);
+        }
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body class="bg-slate-950 min-h-screen text-slate-100">
@@ -116,11 +140,12 @@
                             <div class="text-xs text-slate-400 mt-1" id="charCount"></div>
                         </div>
 
-                        <!-- Submit Button -->
+                        <!-- Submit Button (Primary CTA) -->
                         <button
                             id="submitBtn"
                             type="submit"
-                            class="w-full py-2.5 text-sm bg-gradient-to-r from-blue-100 to-sky-100 hover:from-blue-50 hover:to-sky-50 text-slate-900 font-semibold rounded-lg transition transform hover:scale-[1.01] active:scale-[0.99] shadow-md shadow-blue-900/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                            class="w-full py-3 text-base bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl transition shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none min-h-[48px] md:min-h-[44px]"
+                            aria-label="Search for events"
                         >
                             Find Events
                         </button>
@@ -140,13 +165,68 @@
                     <div id="error" class="hidden mt-6 p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-300 text-sm"></div>
 
                     <!-- Loading -->
-                    <div id="loading" class="hidden mt-8 text-center bg-slate-800/50 border border-slate-700 rounded-xl p-4 fade-in">
-                        <div class="spinner w-10 h-10 border-4 border-slate-600 border-t-blue-500 rounded-full mx-auto mb-3"></div>
-                        <p class="text-slate-400">Ranking events for you...</p>
+                    <div id="loading" class="hidden mt-8 fade-in space-y-4">
+                        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-8 text-center">
+                            <div class="spinner w-12 h-12 border-4 border-slate-600 border-t-blue-500 rounded-full mx-auto mb-4"></div>
+                            <p class="text-slate-300 font-medium">Finding your events...</p>
+                            <p class="text-slate-500 text-sm mt-2">This may take a moment</p>
+                        </div>
+
+                        <!-- Loading Skeleton -->
+                        <div class="space-y-3" id="skeletonContent">
+                            <div class="bg-slate-800/45 border border-slate-600/80 rounded-xl p-4 skeleton">
+                                <div class="flex gap-4">
+                                    <div class="bg-slate-700/50 rounded w-7 h-6 flex-shrink-0"></div>
+                                    <div class="flex-1 space-y-2">
+                                        <div class="bg-slate-700/50 h-5 rounded w-3/4"></div>
+                                        <div class="bg-slate-700/30 h-4 rounded w-full"></div>
+                                        <div class="flex gap-2 mt-3">
+                                            <div class="bg-slate-700/50 h-6 rounded w-12"></div>
+                                            <div class="bg-slate-700/50 h-6 rounded w-16"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-slate-800/45 border border-slate-600/80 rounded-xl p-4 skeleton">
+                                <div class="flex gap-4">
+                                    <div class="bg-slate-700/50 rounded w-7 h-6 flex-shrink-0"></div>
+                                    <div class="flex-1 space-y-2">
+                                        <div class="bg-slate-700/50 h-5 rounded w-3/4"></div>
+                                        <div class="bg-slate-700/30 h-4 rounded w-full"></div>
+                                        <div class="flex gap-2 mt-3">
+                                            <div class="bg-slate-700/50 h-6 rounded w-12"></div>
+                                            <div class="bg-slate-700/50 h-6 rounded w-16"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-slate-800/45 border border-slate-600/80 rounded-xl p-4 skeleton">
+                                <div class="flex gap-4">
+                                    <div class="bg-slate-700/50 rounded w-7 h-6 flex-shrink-0"></div>
+                                    <div class="flex-1 space-y-2">
+                                        <div class="bg-slate-700/50 h-5 rounded w-3/4"></div>
+                                        <div class="bg-slate-700/30 h-4 rounded w-full"></div>
+                                        <div class="flex gap-2 mt-3">
+                                            <div class="bg-slate-700/50 h-6 rounded w-12"></div>
+                                            <div class="bg-slate-700/50 h-6 rounded w-16"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Results -->
                     <div id="result" class="hidden mt-8 space-y-4">
+                        <!-- Search Context -->
+                        <div class="bg-slate-800/30 border border-slate-700/50 rounded-lg p-3 flex items-center justify-between">
+                            <div>
+                                <p class="text-xs text-slate-500">Searching for</p>
+                                <p class="text-sm text-white font-medium" id="searchContext"></p>
+                            </div>
+                            <button id="newSearchBtn" type="button" class="px-3 py-1 text-xs text-slate-400 hover:text-white hover:bg-slate-700 rounded-md transition">New search</button>
+                        </div>
+
                         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                             <div>
                                 <h2 class="text-xl font-semibold text-white">Top Matches</h2>
@@ -398,6 +478,11 @@
                 return;
             }
 
+            // Store search context for display
+            window.currentSearchGoals = goals;
+            window.currentSearchDateFilter = dateFilter;
+            window.currentSearchPriceFilter = priceFilter;
+
             showLoading(true);
             showError("");
             submitBtn.disabled = true;
@@ -482,6 +567,17 @@
                     `;
                     }).join('');
                 }
+
+                // Populate search context
+                const dateFilterMap = {
+                    'today': 'Today',
+                    'this-week': 'This Week',
+                    'next-week': 'Next Week'
+                };
+                const priceFilterLabel = priceFilter === 'paid' ? 'Paid' : 'Free';
+                const dateLabel = dateFilterMap[dateFilter] || dateFilter;
+                const contextText = `${goals} • ${dateLabel} • ${priceFilterLabel}`;
+                document.getElementById("searchContext").textContent = contextText;
 
                 // Initial render
                 const cardsHtml = renderCards(rankedEvents);
@@ -605,6 +701,21 @@
                 error.classList.add("hidden");
             }
         }
+
+        // New search button
+        document.addEventListener("click", (e) => {
+            if (e.target?.id === "newSearchBtn") {
+                e.preventDefault();
+                // Hide results
+                document.getElementById("result").classList.add("hidden");
+                // Clear goals input
+                goalsInput.value = "";
+                updateInputState();
+                // Scroll to top and focus input
+                goalsInput.focus();
+                goalsInput.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+        });
     </script>
 </body>
 </html>
