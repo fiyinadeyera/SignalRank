@@ -228,7 +228,16 @@
         const goalsInput = document.getElementById("goals");
         const voiceBtn = document.getElementById("voiceBtn");
         const submitBtn = document.getElementById("submitBtn");
+        const goalsInput = document.getElementById("goals");
         const defaultSubmitText = submitBtn.textContent.trim();
+
+        // Enter key to submit
+        goalsInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById("goalForm").dispatchEvent(new Event("submit"));
+            }
+        });
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = null;
         let isListening = false;
