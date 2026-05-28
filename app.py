@@ -94,6 +94,8 @@ def _sample_date(days_ahead, time_str):
 
 
 def _build_sample_events():
+    # Spread across days 1-9 so events exist for all three date filters
+    # (today, this-week = 0-7 days, next-week = 8-14 days)
     return [
         {
             "name": "NYC Tech Founders Mixer",
@@ -114,7 +116,7 @@ def _build_sample_events():
         {
             "name": "Venture Capital Panel: Investing in 2026",
             "description": "VCs from a16z, Sequoia, and First Round discuss what they're investing in.",
-            "start": _sample_date(3, "18:00"),
+            "start": _sample_date(4, "18:00"),
             "venue": "Columbia Business School",
             "is_free": True,
             "url": "https://example.com",
@@ -122,7 +124,7 @@ def _build_sample_events():
         {
             "name": "Startup Pitch Night — Demo Day",
             "description": "10 early-stage startups pitch to investors and operators.",
-            "start": _sample_date(2, "19:00"),
+            "start": _sample_date(5, "19:00"),
             "venue": "WeWork, Flatiron",
             "is_free": True,
             "url": "https://example.com",
@@ -130,7 +132,7 @@ def _build_sample_events():
         {
             "name": "Product Management Summit NYC",
             "description": "Full-day event for PMs with talks on roadmapping and AI tools.",
-            "start": _sample_date(4, "09:00"),
+            "start": _sample_date(7, "09:00"),
             "venue": "Javits Center",
             "is_free": False,
             "url": "https://example.com",
@@ -138,7 +140,7 @@ def _build_sample_events():
         {
             "name": "Brooklyn Running Club — Weekly 5K",
             "description": "Casual weekly run followed by brunch.",
-            "start": _sample_date(5, "08:00"),
+            "start": _sample_date(9, "08:00"),
             "venue": "Prospect Park, Brooklyn",
             "is_free": True,
             "url": "https://example.com",
@@ -478,21 +480,24 @@ def events():
 
 
 def get_date_range(date_filter):
-    """Get date range based on filter selection."""
+    """Get date range based on filter selection.
+
+    Uses a rolling window so events always fall inside the chosen bucket
+    regardless of which day of the week it is:
+        today     = today only
+        this-week = today through the next 7 days
+        next-week = 8 through 14 days from today
+    """
     today = datetime.now().date()
 
     if date_filter == "today":
         return today, today
     elif date_filter == "next-week":
-        start = today + timedelta(days=7)
-        end = start + timedelta(days=6)
+        start = today + timedelta(days=8)
+        end   = today + timedelta(days=14)
         return start, end
-    else:  # "this-week"
-        # Get start of this week (Monday)
-        start = today - timedelta(days=today.weekday())
-        # Get end of this week (Sunday)
-        end = start + timedelta(days=6)
-        return start, end
+    else:  # "this-week" (default)
+        return today, today + timedelta(days=7)
 
 
 def filter_events_by_date(events, start_date, end_date):
