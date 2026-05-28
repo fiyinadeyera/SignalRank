@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}SignalRank — fiyin{% endblock %}
+{% block title %}SignalRank{% endblock %}
 
 {% block head_extra %}
 <style>
@@ -73,8 +73,9 @@
                         <div>
                             <label for="priceFilter" class="block text-xs text-slate-400 mb-1.5">Budget</label>
                             <select id="priceFilter" class="w-full md:w-auto min-w-[110px] px-2 py-1.5 text-xs rounded-md bg-slate-800 border border-slate-600 text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-300">
-                                <option value="free" selected>Free</option>
-                                <option value="paid">Paid</option>
+                                <option value="all" selected>All</option>
+                                <option value="free">Free only</option>
+                                <option value="paid">Paid only</option>
                             </select>
                         </div>
                         <div>
@@ -162,6 +163,60 @@
         }
         return events.slice(0, 6);
     }
+
+    // renderCards is defined at outer scope so sortBy handler can call it without closure issues
+    function renderCards(eventsToRender) {
+        const allEvents   = window.currentAllEvents  || [];
+        const savedEvents = JSON.parse(localStorage.getItem('savedEvents') || '{}');
+        if (eventsToRender.length === 0) return '<div class="text-center py-8 text-slate-400">No events found. Try adjusting your filters.</div>';
+        return eventsToRender.map((event, index) => {
+            const scoreNum = parseInt(event.score);
+            let scoreBg = 'bg-orange-900/30 text-orange-300';
+            if (scoreNum >= 8) scoreBg = 'bg-green-900/30 text-green-300';
+            else if (scoreNum >= 6) scoreBg = 'bg-blue-900/30 text-blue-300';
+            const fullEvent = allEvents.find(e => e.name.toLowerCase() === event.name.toLowerCase());
+            const eventUrl  = fullEvent?.url || '';
+            const eventTime = fullEvent?.start || '';
+            const eventId   = event.name;
+            let timeStr = '';
+            if (eventTime) { const parts = eventTime.split(' '); timeStr = parts.length > 1 ? parts[1] : parts[0]; }
+            const isSaved = !!savedEvents[eventId];
+            return `
+                <div class="bg-slate-800/45 border border-slate-600/80 rounded-xl p-4 hover:bg-slate-800/70 transition">
+                    <div class="flex gap-4">
+                        <div class="text-xl font-semibold text-slate-300 flex-shrink-0 w-7">${index + 1}</div>
+                        <div class="flex-1">
+                            <div class="flex justify-between items-start gap-2 mb-2">
+                                <h3 class="font-medium text-slate-100 text-[15px]">${escapeHtml(event.name)}</h3>
+                                <button class="save-btn text-xl flex-shrink-0 transition ${isSaved ? 'text-yellow-400' : 'text-slate-500 hover:text-slate-300'}" data-event-id="${escapeHtml(eventId)}" title="${isSaved ? 'Remove from favorites' : 'Save to favorites'}">${isSaved ? '★' : '☆'}</button>
+                            </div>
+                            ${event.reason ? `<p class="text-sm text-slate-300 mb-2">${escapeHtml(event.reason)}</p>` : ''}
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${scoreBg}">${event.score}</span>
+                                <span class="text-xs px-2 py-0.5 rounded-full ${event.isPaid ? 'bg-amber-900/30 text-amber-300' : 'bg-emerald-900/30 text-emerald-300'}">${event.isPaid ? 'PAID' : 'FREE'}</span>
+                                ${timeStr ? `<span class="text-xs text-slate-400">${escapeHtml(timeStr)}</span>` : ''}
+                                ${eventUrl && eventUrl !== 'https://example.com' ? `<a href="${eventUrl}" target="_blank" class="text-xs text-blue-400 hover:text-blue-300 transition ml-auto">Register →</a>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    // sortBy listener set up once — reads from window globals set after each successful search
+    document.getElementById("sortBy").addEventListener("change", function() {
+        if (!window.currentRankedEvents) return;
+        let sorted = [...window.currentRankedEvents];
+        if (this.value === "score") sorted.sort((a,b) => parseInt(b.score) - parseInt(a.score));
+        else if (this.value === "price") sorted = sorted.filter(e => !e.isPaid).concat(sorted.filter(e => e.isPaid));
+        else if (this.value === "date") sorted.sort((a,b) => {
+            const aD = (window.currentAllEvents||[]).find(e=>e.name===a.name)?.start||"";
+            const bD = (window.currentAllEvents||[]).find(e=>e.name===b.name)?.start||"";
+            return aD.localeCompare(bD);
+        });
+        document.getElementById("resultContent").innerHTML = renderCards(sorted);
+        attachSaveListeners();
+    });
 
     function setButtonGroupState(buttons, activeBtn) {
         buttons.forEach(btn => {
@@ -294,55 +349,10 @@
             window.currentRankedEvents = rankedEvents;
             window.currentAllEvents    = allEvents;
 
-            function renderCards(eventsToRender) {
-                if (eventsToRender.length === 0) return '<div class="text-center py-8 text-slate-400">No events found. Try adjusting your filters.</div>';
-                return eventsToRender.map((event, index) => {
-                    const scoreNum = parseInt(event.score);
-                    let scoreBg = 'bg-orange-900/30 text-orange-300';
-                    if (scoreNum >= 8) scoreBg = 'bg-green-900/30 text-green-300';
-                    else if (scoreNum >= 6) scoreBg = 'bg-blue-900/30 text-blue-300';
-                    const fullEvent = allEvents.find(e => e.name.toLowerCase() === event.name.toLowerCase());
-                    const eventUrl  = fullEvent?.url || '';
-                    const eventTime = fullEvent?.start || '';
-                    const eventId   = event.name;
-                    let timeStr = '';
-                    if (eventTime) { const parts = eventTime.split(' '); timeStr = parts.length > 1 ? parts[1] : parts[0]; }
-                    const isSaved = !!savedEvents[eventId];
-                    return `
-                        <div class="bg-slate-800/45 border border-slate-600/80 rounded-xl p-4 hover:bg-slate-800/70 transition">
-                            <div class="flex gap-4">
-                                <div class="text-xl font-semibold text-slate-300 flex-shrink-0 w-7">${index + 1}</div>
-                                <div class="flex-1">
-                                    <div class="flex justify-between items-start gap-2 mb-2">
-                                        <h3 class="font-medium text-slate-100 text-[15px]">${escapeHtml(event.name)}</h3>
-                                        <button class="save-btn text-xl flex-shrink-0 transition ${isSaved ? 'text-yellow-400' : 'text-slate-500 hover:text-slate-300'}" data-event-id="${escapeHtml(eventId)}" title="${isSaved ? 'Remove from favorites' : 'Save to favorites'}">${isSaved ? '★' : '☆'}</button>
-                                    </div>
-                                    ${event.reason ? `<p class="text-sm text-slate-300 mb-2">${escapeHtml(event.reason)}</p>` : ''}
-                                    <div class="flex items-center gap-2 flex-wrap">
-                                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${scoreBg}">${event.score}</span>
-                                        <span class="text-xs px-2 py-0.5 rounded-full ${event.isPaid ? 'bg-amber-900/30 text-amber-300' : 'bg-emerald-900/30 text-emerald-300'}">${event.isPaid ? 'PAID' : 'FREE'}</span>
-                                        ${timeStr ? `<span class="text-xs text-slate-400">${escapeHtml(timeStr)}</span>` : ''}
-                                        ${eventUrl ? `<a href="${eventUrl}" target="_blank" class="text-xs text-blue-400 hover:text-blue-300 transition ml-auto">Register →</a>` : ''}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>`;
-                }).join('');
-            }
-
             document.getElementById("resultContent").innerHTML = renderCards(rankedEvents);
             document.getElementById("resultCount").textContent  = `Found ${rankedEvents.length} events`;
 
-            document.getElementById("sortBy").addEventListener("change", function() {
-                let sorted = [...window.currentRankedEvents];
-                if (this.value === "score") sorted.sort((a,b) => parseInt(b.score) - parseInt(a.score));
-                else if (this.value === "price") sorted = sorted.filter(e => !e.isPaid).concat(sorted.filter(e => e.isPaid));
-                else if (this.value === "date") sorted.sort((a,b) => { const aD = window.currentAllEvents.find(e=>e.name===a.name)?.start||""; const bD = window.currentAllEvents.find(e=>e.name===b.name)?.start||""; return aD.localeCompare(bD); });
-                document.getElementById("resultContent").innerHTML = renderCards(sorted);
-                attachSaveListeners();
-            });
-
-            document.getElementById("infoBadge").textContent = data.is_live ? `✓ Live events (${data.event_count} found)` : `Sample events (add API keys for live events)`;
+            document.getElementById("infoBadge").textContent = data.is_live ? `Live events (${data.event_count} found)` : `Sample events — add API keys for live results`;
             const resultEl = document.getElementById("result");
             resultEl.classList.remove("hidden"); resultEl.classList.add("slide-in");
             attachSaveListeners(); showLoading(false);
