@@ -94,9 +94,20 @@ def _sample_date(days_ahead, time_str):
 
 
 def _build_sample_events():
-    # Spread across days 1-9 so events exist for all three date filters
-    # (today, this-week = 0-7 days, next-week = 8-14 days)
+    # Events spread across days 0-12 to cover all three date filters:
+    #   today     = day 0
+    #   this-week = days 0-7
+    #   next-week = days 8-14
     return [
+        # today + this-week
+        {
+            "name": "NYC Tech Happy Hour",
+            "description": "Casual after-work drinks for tech founders, PMs, and engineers.",
+            "start": _sample_date(0, "18:30"),
+            "venue": "The Flatiron Room, Manhattan",
+            "is_free": True,
+            "url": "https://example.com",
+        },
         {
             "name": "NYC Tech Founders Mixer",
             "description": "Monthly mixer for startup founders and early employees.",
@@ -137,12 +148,21 @@ def _build_sample_events():
             "is_free": False,
             "url": "https://example.com",
         },
+        # next-week
         {
             "name": "Brooklyn Running Club — Weekly 5K",
             "description": "Casual weekly run followed by brunch.",
             "start": _sample_date(9, "08:00"),
             "venue": "Prospect Park, Brooklyn",
             "is_free": True,
+            "url": "https://example.com",
+        },
+        {
+            "name": "NYC Design & Product Workshop",
+            "description": "Half-day workshop on user research, prototyping, and product thinking.",
+            "start": _sample_date(11, "10:00"),
+            "venue": "General Assembly, Manhattan",
+            "is_free": False,
             "url": "https://example.com",
         },
     ]
