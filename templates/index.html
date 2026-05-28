@@ -52,6 +52,19 @@
             50% { transform: scale(1.1); }
             100% { transform: scale(1); opacity: 1; }
         }
+        @keyframes popoverSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-4px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .calendar-popover {
+            animation: popoverSlideIn 0.2s ease-out;
+        }
         .success-check {
             animation: success-check 0.4s ease-out;
         }
@@ -267,6 +280,98 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // Calendar integration helper
+        function createCalendarLinks(eventName, eventTime, eventVenue) {
+            const eventDate = eventTime ? eventTime.split(' ')[0] : new Date().toISOString().split('T')[0];
+            const eventHour = eventTime && eventTime.includes(':') ? eventTime.split(':')[0] : '18';
+
+            const startDateTime = `${eventDate}T${eventHour}:00:00`;
+            const endDateTime = `${eventDate}T${(parseInt(eventHour) + 1)}:00:00`;
+
+            // Google Calendar
+            const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventName)}&dates=${eventDate}/${eventDate}&location=${encodeURIComponent(eventVenue)}`;
+
+            // Outlook
+            const outlookUrl = `https://outlook.live.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(eventName)}&body=${encodeURIComponent(eventVenue)}&startdt=${startDateTime}&enddt=${endDateTime}`;
+
+            // ICS Download
+            const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//SignalRank//Event//EN
+BEGIN:VEVENT
+UID:${eventName}-${Date.now()}@signalrank.com
+DTSTAMP:${new Date().toISOString().replace(/[:-]/g, '').replace(/\.\d{3}/, '')}Z
+DTSTART:${eventDate}T${eventHour}0000Z
+DTEND:${eventDate}T${(parseInt(eventHour) + 1)}0000Z
+SUMMARY:${eventName}
+LOCATION:${eventVenue}
+END:VEVENT
+END:VCALENDAR`;
+
+            return {
+                google: googleCalendarUrl,
+                outlook: outlookUrl,
+                ics: icsContent
+            };
+        }
+
+        // Detect mobile device
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+
+        // Show calendar options popover
+        function showCalendarPopover(btn, eventName, eventTime, eventVenue) {
+            const existingPopover = document.querySelector('.calendar-popover');
+            if (existingPopover) {
+                existingPopover.remove();
+            }
+
+            const links = createCalendarLinks(eventName, eventTime, eventVenue);
+            const popover = document.createElement('div');
+            popover.className = 'calendar-popover absolute bg-slate-900 border border-slate-700 rounded-lg shadow-lg p-3 z-50 min-w-48 animate-in fade-in slide-in-from-top-2 duration-200';
+
+            // Position popover near button
+            const rect = btn.getBoundingClientRect();
+            popover.style.top = (rect.bottom + 8) + 'px';
+            popover.style.left = (rect.left - 100) + 'px';
+
+            popover.innerHTML = `
+                <div class="space-y-2">
+                    <a href="${links.google}" target="_blank" class="block px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 rounded transition">Google Calendar</a>
+                    <a href="${links.outlook}" target="_blank" class="block px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 rounded transition">Outlook</a>
+                    <button class="ics-btn w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 rounded transition" data-ics-content="${encodeURIComponent(links.ics)}" data-event-name="${eventName}">Apple Calendar (ICS)</button>
+                </div>
+            `;
+
+            document.body.appendChild(popover);
+
+            // Close on outside click
+            const closePopover = (e) => {
+                if (!popover.contains(e.target) && !btn.contains(e.target)) {
+                    popover.remove();
+                    document.removeEventListener('click', closePopover);
+                }
+            };
+
+            setTimeout(() => {
+                document.addEventListener('click', closePopover);
+            }, 100);
+
+            // Handle ICS download
+            popover.querySelector('.ics-btn').addEventListener('click', (e) => {
+                e.preventDefault();
+                const icsContent = decodeURIComponent(e.target.getAttribute('data-ics-content'));
+                const eventName = e.target.getAttribute('data-event-name');
+                const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `${eventName}.ics`;
+                link.click();
+                popover.remove();
+            });
         }
 
         function parseResults(text) {
@@ -545,7 +650,9 @@
                     const fullEvent = allEvents.find(e => e.name.toLowerCase() === event.name.toLowerCase());
                     const eventUrl = fullEvent?.url || '';
                     const eventTime = fullEvent?.start || '';
+                    const eventVenue = fullEvent?.venue || '';
                     const eventId = event.name;
+                    const calendarId = `cal-${index}`;
 
                     let timeStr = '';
                     if (eventTime) {
@@ -556,25 +663,36 @@
                     const isSaved = savedEvents[eventId] ? true : false;
 
                     return `
-                        <div class="bg-slate-800/45 border border-slate-600/80 rounded-xl p-4 hover:bg-slate-800/70 transition">
+                        <div class="bg-slate-800/45 border border-slate-600/80 rounded-xl p-6 hover:bg-slate-800/70 transition group">
                             <div class="flex gap-4">
-                                <div class="text-xl font-semibold text-slate-300 flex-shrink-0 w-7">${index + 1}</div>
-                                <div class="flex-1">
-                                    <div class="flex justify-between items-start gap-2 mb-2">
-                                        <h3 class="font-medium text-slate-100 text-[15px]">${escapeHtml(event.name)}</h3>
-                                        <button class="save-btn text-xl flex-shrink-0 transition ${isSaved ? 'text-yellow-400' : 'text-slate-500 hover:text-slate-300'}" data-event-id="${escapeHtml(eventId)}" title="${isSaved ? 'Remove from favorites' : 'Save to favorites'}">
+                                <div class="text-lg font-semibold text-slate-400 flex-shrink-0 w-6 pt-1">${index + 1}</div>
+                                <div class="flex-1 space-y-3">
+                                    <div class="flex justify-between items-start gap-3">
+                                        <div class="flex-1">
+                                            <h3 class="font-semibold text-slate-100 text-base leading-snug">${escapeHtml(event.name)}</h3>
+                                        </div>
+                                        <button class="save-btn text-lg flex-shrink-0 transition opacity-70 hover:opacity-100 ${isSaved ? 'text-yellow-400' : 'text-slate-500'}" data-event-id="${escapeHtml(eventId)}" title="${isSaved ? 'Remove from favorites' : 'Save to favorites'}" aria-label="Save event">
                                             ${isSaved ? '★' : '☆'}
                                         </button>
                                     </div>
-                                    ${event.reason ? `<div class="text-sm text-sky-200/90 mb-2">Matches: ${escapeHtml(event.reason)}</div>` : ''}
-                                    ${event.description ? `<p class="text-sm text-slate-400 mb-3">${escapeHtml(event.description)}</p>` : ''}
-                                    <div class="flex items-center gap-3 flex-wrap">
-                                        <span class="px-2 py-1 rounded ${scoreBg} text-xs font-semibold">${event.score}</span>
-                                        <span class="text-xs font-semibold ${event.isPaid ? 'text-amber-400' : 'text-emerald-400'}">
-                                            ${event.isPaid ? 'PAID' : 'FREE'}
+
+                                    ${event.reason ? `<p class="text-sm text-slate-300">Matches: ${escapeHtml(event.reason)}</p>` : ''}
+
+                                    <div class="flex flex-col gap-2 text-sm text-slate-400">
+                                        ${eventVenue ? `<div class="flex items-center gap-2"><span class="text-slate-500">📍</span><span>${escapeHtml(eventVenue)}</span></div>` : ''}
+                                        ${timeStr ? `<div class="flex items-center gap-2"><span class="text-slate-500">🕐</span><span>${escapeHtml(timeStr)}</span></div>` : ''}
+                                    </div>
+
+                                    <div class="flex items-center gap-3 flex-wrap pt-2">
+                                        <span class="px-3 py-1 rounded-full ${scoreBg} text-xs font-semibold">Score: ${event.score}</span>
+                                        <span class="text-xs font-medium ${event.isPaid ? 'text-amber-400' : 'text-emerald-400'}">
+                                            ${event.isPaid ? '💰 Paid' : '✓ Free'}
                                         </span>
-                                        ${timeStr ? `<span class="text-xs text-slate-500">${timeStr}</span>` : ''}
-                                        ${eventUrl ? `<a href="${eventUrl}" target="_blank" class="text-xs text-blue-400 hover:text-blue-300 transition ml-auto">Register →</a>` : ''}
+                                    </div>
+
+                                    <div class="flex items-center gap-2 pt-2 border-t border-slate-700/50">
+                                        ${eventUrl ? `<a href="${eventUrl}" target="_blank" class="text-sm text-blue-400 hover:text-blue-300 transition font-medium">Register</a>` : ''}
+                                        <button class="calendar-btn text-sm text-slate-400 hover:text-slate-200 transition font-medium" data-event-id="${index}" data-event-name="${escapeHtml(event.name)}" data-event-time="${eventTime}" data-event-venue="${escapeHtml(eventVenue)}" title="Add to calendar">+ Calendar</button>
                                     </div>
                                 </div>
                             </div>
@@ -599,6 +717,30 @@
                 document.getElementById("resultContent").innerHTML = cardsHtml;
                 document.getElementById("resultCount").textContent = `Found ${rankedEvents.length} events`;
 
+                // Attach calendar button listeners
+                function attachCalendarListeners() {
+                    document.querySelectorAll('.calendar-btn').forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            const eventName = btn.getAttribute('data-event-name');
+                            const eventTime = btn.getAttribute('data-event-time');
+                            const eventVenue = btn.getAttribute('data-event-venue');
+
+                            if (isMobileDevice()) {
+                                // On mobile, try to use native calendar if available
+                                const links = createCalendarLinks(eventName, eventTime, eventVenue);
+                                // For now, show Google Calendar on mobile (most universal)
+                                window.open(links.google, '_blank');
+                            } else {
+                                // On desktop, show popover with options
+                                showCalendarPopover(btn, eventName, eventTime, eventVenue);
+                            }
+                        });
+                    });
+                }
+
+                attachCalendarListeners();
+
                 // Sort handler
                 const sortSelect = document.getElementById("sortBy");
                 sortSelect.addEventListener("change", () => {
@@ -618,6 +760,7 @@
 
                     document.getElementById("resultContent").innerHTML = renderCards(sorted);
                     attachSaveListeners();
+                    attachCalendarListeners();
                 });
                 document.getElementById("infoBadge").textContent =
                     data.is_live
@@ -683,25 +826,44 @@
                         </div>
                     `;
                 } else {
-                    favoritesContent.innerHTML = favoriteEvents.map((event, index) => `
-                        <div class="bg-slate-800/45 border border-slate-600/80 rounded-xl p-4 hover:bg-slate-800/70 transition">
+                    favoritesContent.innerHTML = favoriteEvents.map((event, index) => {
+                        let timeStr = '';
+                        if (event.start) {
+                            const parts = event.start.split(' ');
+                            timeStr = parts.length > 1 ? parts[1] : parts[0];
+                        }
+                        return `
+                        <div class="bg-slate-800/45 border border-slate-600/80 rounded-xl p-6 hover:bg-slate-800/70 transition group">
                             <div class="flex gap-4">
-                                <div class="text-xl font-semibold text-slate-300 flex-shrink-0 w-7">${index + 1}</div>
-                                <div class="flex-1">
-                                    <div class="flex justify-between items-start gap-2 mb-2">
-                                        <h3 class="font-medium text-slate-100 text-[15px]">${escapeHtml(event.name)}</h3>
-                                        <button class="save-btn text-xl flex-shrink-0 transition text-yellow-400" data-event-id="${escapeHtml(event.name)}" title="Remove from favorites">★</button>
+                                <div class="text-lg font-semibold text-slate-400 flex-shrink-0 w-6 pt-1">${index + 1}</div>
+                                <div class="flex-1 space-y-3">
+                                    <div class="flex justify-between items-start gap-3">
+                                        <div class="flex-1">
+                                            <h3 class="font-semibold text-slate-100 text-base leading-snug">${escapeHtml(event.name)}</h3>
+                                        </div>
+                                        <button class="save-btn text-lg flex-shrink-0 transition text-yellow-400 opacity-70 hover:opacity-100" data-event-id="${escapeHtml(event.name)}" title="Remove from favorites" aria-label="Remove from favorites">★</button>
                                     </div>
-                                    <div class="flex items-center gap-3 flex-wrap text-xs text-slate-400">
-                                        <span>${event.venue}</span>
-                                        <span>${event.start}</span>
-                                        <span class="${event.is_free ? 'text-emerald-400' : 'text-amber-400'}">${event.is_free ? 'FREE' : 'PAID'}</span>
-                                        ${event.url ? `<a href="${event.url}" target="_blank" class="text-blue-400 hover:text-blue-300">Register →</a>` : ''}
+
+                                    <div class="flex flex-col gap-2 text-sm text-slate-400">
+                                        ${event.venue ? `<div class="flex items-center gap-2"><span class="text-slate-500">📍</span><span>${escapeHtml(event.venue)}</span></div>` : ''}
+                                        ${timeStr ? `<div class="flex items-center gap-2"><span class="text-slate-500">🕐</span><span>${escapeHtml(timeStr)}</span></div>` : ''}
+                                    </div>
+
+                                    <div class="flex items-center gap-3 flex-wrap pt-2">
+                                        <span class="text-xs font-medium ${event.is_free ? 'text-emerald-400' : 'text-amber-400'}">
+                                            ${event.is_free ? '✓ Free' : '💰 Paid'}
+                                        </span>
+                                    </div>
+
+                                    <div class="flex items-center gap-2 pt-2 border-t border-slate-700/50">
+                                        ${event.url ? `<a href="${event.url}" target="_blank" class="text-sm text-blue-400 hover:text-blue-300 transition font-medium">Register</a>` : ''}
+                                        <button class="calendar-btn text-sm text-slate-400 hover:text-slate-200 transition font-medium" data-event-id="fav-${index}" data-event-name="${escapeHtml(event.name)}" data-event-time="${event.start}" data-event-venue="${escapeHtml(event.venue)}" title="Add to calendar">+ Calendar</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    `).join('');
+                    `;}
+                    ).join('');
                 }
 
                 resultContent.classList.add('hidden');
@@ -714,6 +876,7 @@
                 rankingsTab.setAttribute('aria-selected', 'false');
 
                 attachSaveListeners();
+                attachCalendarListeners();
             });
         }
 
