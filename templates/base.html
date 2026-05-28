@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}fiyin{% endblock %}</title>
+    <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: "Satoshi", system-ui, -apple-system, "Segoe UI", sans-serif; }
+        .nav-link { transition: color 0.15s; }
+    </style>
+    {% block head_extra %}{% endblock %}
+</head>
+<body class="bg-slate-950 min-h-screen text-slate-100">
+
+    <nav class="fixed top-0 left-0 right-0 z-50 border-b border-slate-800/60 bg-slate-950/80 backdrop-blur-md">
+        <div class="mx-auto max-w-5xl px-5 h-12 flex items-center justify-between">
+            <a href="/" class="text-sm font-semibold tracking-tight text-white hover:text-slate-300 transition-colors">fiyin</a>
+            <div class="flex items-center gap-1">
+                <a href="/signalrank" class="nav-link px-3 py-1.5 rounded-md text-xs font-medium {% if page == 'signalrank' %}text-white bg-slate-800{% else %}text-slate-500 hover:text-slate-300 hover:bg-slate-800/50{% endif %}">SignalRank</a>
+                <a href="/agent"      class="nav-link px-3 py-1.5 rounded-md text-xs font-medium {% if page == 'agent' %}text-white bg-slate-800{% else %}text-slate-500 hover:text-slate-300 hover:bg-slate-800/50{% endif %}">Agent</a>
+                <a href="/risk"       class="nav-link px-3 py-1.5 rounded-md text-xs font-medium {% if page == 'risk' %}text-white bg-slate-800{% else %}text-slate-500 hover:text-slate-300 hover:bg-slate-800/50{% endif %}">Risk</a>
+                <a href="/events"     class="nav-link px-3 py-1.5 rounded-md text-xs font-medium {% if page == 'events' %}text-white bg-slate-800{% else %}text-slate-500 hover:text-slate-300 hover:bg-slate-800/50{% endif %}">Events</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="pt-12">
+        {% block content %}{% endblock %}
+    </div>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>
