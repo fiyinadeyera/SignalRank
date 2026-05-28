@@ -390,27 +390,24 @@ def fetch_luma_events():
 def rank_events(events, user_goals):
     client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
 
+    n = min(6, len(events))
     events_text = "\n\n".join([
         f"{i+1}. {e['name']}\n   When: {e['start']}\n   Venue: {e['venue']}\n   Free: {e['is_free']}\n   Info: {e['description']}"
         for i, e in enumerate(events)
     ])
 
-    prompt = f"""Pick the TOP 6 events that best match these goals: {user_goals}
+    prompt = f"""Rank the top {n} events that best match these goals: {user_goals}
 
-Available events:
+Available events ({len(events)} total):
 {events_text}
 
-Output ONLY the 6 events in this exact format. NO intro text, NO numbers, NO extra text:
+Output ONLY the ranked events — no intro text, no commentary, no numbers. Use this exact format for every event:
 
 EVENT NAME
-REASON: Why it matches their goals (1 sentence)
+REASON: One sentence explaining why this matches their goals.
 Score: X/10 | FREE or PAID
 
-EVENT NAME
-REASON: Why it matches their goals (1 sentence)
-Score: X/10 | FREE or PAID
-
-[repeat for all 6 events]"""
+Repeat the block for all {n} events."""
 
     message = client.messages.create(
         model="claude-sonnet-4-6",
