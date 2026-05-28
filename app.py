@@ -14,19 +14,50 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
 import time
 
-CHROMEDRIVER_PATH = "/nix/store/8zj50jw4w0hby47167kqqsaqw4mm5bkd-chromedriver-unwrapped-138.0.7204.100/bin/chromedriver"
-CHROMIUM_PATH = "/nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium"
+import shutil
+
+# Replit Nix paths — only used if they actually exist
+_REPLIT_CHROMEDRIVER = "/nix/store/8zj50jw4w0hby47167kqqsaqw4mm5bkd-chromedriver-unwrapped-138.0.7204.100/bin/chromedriver"
+_REPLIT_CHROMIUM    = "/nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium"
+
+
+def _find_binary(candidates):
+    """Return the first path that exists on disk, or None."""
+    for p in candidates:
+        if p and os.path.isfile(p):
+            return p
+    return None
 
 
 def get_chrome_driver():
+    chromium_path = _find_binary([
+        _REPLIT_CHROMIUM,
+        shutil.which("chromium-browser"),
+        shutil.which("chromium"),
+        shutil.which("google-chrome"),
+        shutil.which("google-chrome-stable"),
+        "/usr/bin/chromium-browser",
+        "/usr/bin/chromium",
+        "/usr/bin/google-chrome",
+    ])
+    chromedriver_path = _find_binary([
+        _REPLIT_CHROMEDRIVER,
+        shutil.which("chromedriver"),
+        "/usr/bin/chromedriver",
+        "/usr/local/bin/chromedriver",
+    ])
+
+    if not chromium_path or not chromedriver_path:
+        raise RuntimeError("Chrome/Chromium not available in this environment")
+
     options = webdriver.ChromeOptions()
-    options.binary_location = CHROMIUM_PATH
+    options.binary_location = chromium_path
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
     options.add_argument('user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36')
-    return webdriver.Chrome(service=Service(CHROMEDRIVER_PATH), options=options)
+    return webdriver.Chrome(service=Service(chromedriver_path), options=options)
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -57,56 +88,62 @@ TICKETMASTER_KEY = os.environ.get("TICKETMASTER_API_KEY") or _env.get("TICKETMAS
 ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY") or _env.get("ANTHROPIC_API_KEY")
 EVENTBRITE_KEY = os.environ.get("EVENTBRITE_API_KEY") or _env.get("EVENTBRITE_API_KEY")
 
-SAMPLE_EVENTS = [
-    {
-        "name": "NYC Tech Founders Mixer",
-        "description": "Monthly mixer for startup founders and early employees.",
-        "start": "2026-05-21 19:00",
-        "venue": "Soho House, Manhattan",
-        "is_free": False,
-        "url": "https://example.com",
-    },
-    {
-        "name": "AI & Machine Learning Meetup NYC",
-        "description": "Talks and networking for ML engineers and AI enthusiasts.",
-        "start": "2026-05-22 18:30",
-        "venue": "Google NYC Office, Chelsea",
-        "is_free": True,
-        "url": "https://example.com",
-    },
-    {
-        "name": "Venture Capital Panel: Investing in 2026",
-        "description": "VCs from a16z, Sequoia, and First Round discuss what they're investing in.",
-        "start": "2026-05-20 18:00",
-        "venue": "Columbia Business School",
-        "is_free": True,
-        "url": "https://example.com",
-    },
-    {
-        "name": "Startup Pitch Night — Demo Day",
-        "description": "10 early-stage startups pitch to investors and operators.",
-        "start": "2026-05-22 19:00",
-        "venue": "WeWork, Flatiron",
-        "is_free": True,
-        "url": "https://example.com",
-    },
-    {
-        "name": "Product Management Summit NYC",
-        "description": "Full-day event for PMs with talks on roadmapping and AI tools.",
-        "start": "2026-05-21 09:00",
-        "venue": "Javits Center",
-        "is_free": False,
-        "url": "https://example.com",
-    },
-    {
-        "name": "Brooklyn Running Club — Weekly 5K",
-        "description": "Casual weekly run followed by brunch.",
-        "start": "2026-05-25 08:00",
-        "venue": "Prospect Park, Brooklyn",
-        "is_free": True,
-        "url": "https://example.com",
-    },
-]
+def _sample_date(days_ahead, time_str):
+    """Return a date string offset from today."""
+    return (datetime.now() + timedelta(days=days_ahead)).strftime(f"%Y-%m-%d {time_str}")
+
+
+def _build_sample_events():
+    return [
+        {
+            "name": "NYC Tech Founders Mixer",
+            "description": "Monthly mixer for startup founders and early employees.",
+            "start": _sample_date(1, "19:00"),
+            "venue": "Soho House, Manhattan",
+            "is_free": False,
+            "url": "https://example.com",
+        },
+        {
+            "name": "AI & Machine Learning Meetup NYC",
+            "description": "Talks and networking for ML engineers and AI enthusiasts.",
+            "start": _sample_date(2, "18:30"),
+            "venue": "Google NYC Office, Chelsea",
+            "is_free": True,
+            "url": "https://example.com",
+        },
+        {
+            "name": "Venture Capital Panel: Investing in 2026",
+            "description": "VCs from a16z, Sequoia, and First Round discuss what they're investing in.",
+            "start": _sample_date(3, "18:00"),
+            "venue": "Columbia Business School",
+            "is_free": True,
+            "url": "https://example.com",
+        },
+        {
+            "name": "Startup Pitch Night — Demo Day",
+            "description": "10 early-stage startups pitch to investors and operators.",
+            "start": _sample_date(2, "19:00"),
+            "venue": "WeWork, Flatiron",
+            "is_free": True,
+            "url": "https://example.com",
+        },
+        {
+            "name": "Product Management Summit NYC",
+            "description": "Full-day event for PMs with talks on roadmapping and AI tools.",
+            "start": _sample_date(4, "09:00"),
+            "venue": "Javits Center",
+            "is_free": False,
+            "url": "https://example.com",
+        },
+        {
+            "name": "Brooklyn Running Club — Weekly 5K",
+            "description": "Casual weekly run followed by brunch.",
+            "start": _sample_date(5, "08:00"),
+            "venue": "Prospect Park, Brooklyn",
+            "is_free": True,
+            "url": "https://example.com",
+        },
+    ]
 
 
 def fetch_meetup_events():
@@ -508,7 +545,7 @@ def optimize():
                 pass
 
     if not all_events:
-        all_events = SAMPLE_EVENTS
+        all_events = _build_sample_events()
         is_live = False
     else:
         is_live = True
