@@ -12,8 +12,21 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 import time
+
+CHROMEDRIVER_PATH = "/nix/store/8zj50jw4w0hby47167kqqsaqw4mm5bkd-chromedriver-unwrapped-138.0.7204.100/bin/chromedriver"
+CHROMIUM_PATH = "/nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium"
+
+
+def get_chrome_driver():
+    options = webdriver.ChromeOptions()
+    options.binary_location = CHROMIUM_PATH
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-gpu')
+    options.add_argument('user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36')
+    return webdriver.Chrome(service=Service(CHROMEDRIVER_PATH), options=options)
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -104,17 +117,7 @@ def fetch_meetup_events():
         return cached
 
     try:
-        options = webdriver.ChromeOptions()
-        options.add_argument('--headless')
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')
-        options.add_argument('--disable-gpu')
-        options.add_argument('user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36')
-
-        driver = webdriver.Chrome(
-            service=Service(ChromeDriverManager().install()),
-            options=options
-        )
+        driver = get_chrome_driver()
 
         driver.get("https://www.meetup.com/en-US/find/?location=New+York&keywords=tech")
         time.sleep(4)
@@ -216,17 +219,7 @@ def fetch_eventbrite_events():
         return cached
 
     try:
-        options = webdriver.ChromeOptions()
-        options.add_argument('--headless')
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')
-        options.add_argument('--disable-gpu')
-        options.add_argument('user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')
-
-        driver = webdriver.Chrome(
-            service=Service(ChromeDriverManager().install()),
-            options=options
-        )
+        driver = get_chrome_driver()
 
         driver.get("https://www.eventbrite.com/d/ny--new-york/")
         time.sleep(3)
@@ -279,17 +272,7 @@ def fetch_luma_events():
         return cached
 
     try:
-        options = webdriver.ChromeOptions()
-        options.add_argument('--headless')
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')
-        options.add_argument('--disable-gpu')
-        options.add_argument('user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36')
-
-        driver = webdriver.Chrome(
-            service=Service(ChromeDriverManager().install()),
-            options=options
-        )
+        driver = get_chrome_driver()
 
         # Try NYC events page
         driver.get("https://lu.ma/new-york")
@@ -380,13 +363,35 @@ Score: X/10 | FREE or PAID
 
 
 WEBHOOK_SECRET = os.environ.get("GITHUB_WEBHOOK_SECRET", "")
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def sync_file_from_github(repo_full_name, file_path):
+    import base64
+    headers = {"Accept": "application/vnd.github+json"}
+    if GITHUB_TOKEN:
+        headers["Authorization"] = f"Bearer {GITHUB_TOKEN}"
+    r = requests.get(
+        f"https://api.github.com/repos/{repo_full_name}/contents/{file_path}",
+        headers=headers,
+        timeout=10
+    )
+    if r.status_code != 200:
+        return False, r.status_code
+    content = base64.b64decode(r.json()["content"])
+    dest = os.path.join(BASE_DIR, file_path)
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    with open(dest, "wb") as f:
+        f.write(content)
+    return True, None
 
 
 @app.route("/github-webhook", methods=["POST"])
 def github_webhook():
     sig = request.headers.get("X-Hub-Signature-256", "")
+    body = request.get_data()
     if WEBHOOK_SECRET:
-        body = request.get_data()
         expected = "sha256=" + hmac.new(
             WEBHOOK_SECRET.encode(), body, hashlib.sha256
         ).hexdigest()
@@ -394,21 +399,45 @@ def github_webhook():
             return jsonify({"error": "Invalid signature"}), 403
 
     event = request.headers.get("X-GitHub-Event", "")
-    if event == "push":
-        result = subprocess.run(
-            ["git", "pull"],
-            cwd=os.path.dirname(__file__),
-            capture_output=True,
-            text=True
-        )
-        return jsonify({"status": "pulled", "output": result.stdout.strip()}), 200
+    if event != "push":
+        return jsonify({"status": "ignored"}), 200
 
-    return jsonify({"status": "ignored"}), 200
+    payload = request.get_json(force=True) or {}
+    repo = payload.get("repository", {}).get("full_name", "")
+    commits = payload.get("commits", [])
+
+    changed = set()
+    for commit in commits:
+        for f in commit.get("added", []) + commit.get("modified", []):
+            changed.add(f)
+
+    synced, failed = [], []
+    for file_path in changed:
+        ok, err = sync_file_from_github(repo, file_path)
+        (synced if ok else failed).append(file_path)
+
+    return jsonify({"status": "synced", "synced": synced, "failed": failed}), 200
 
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", page="home")
+
+@app.route("/signalrank")
+def signalrank():
+    return render_template("signalrank.html", page="signalrank")
+
+@app.route("/agent")
+def agent():
+    return render_template("agent.html", page="agent")
+
+@app.route("/risk")
+def risk():
+    return render_template("risk.html", page="risk")
+
+@app.route("/events")
+def events():
+    return render_template("events.html", page="events")
 
 
 def get_date_range(date_filter):
@@ -506,4 +535,4 @@ def optimize():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
