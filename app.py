@@ -387,6 +387,119 @@ def fetch_luma_events():
         return []
 
 
+def fetch_techweek_events():
+    """Scrape tech-week.com for NYC Tech Week events"""
+    cached = _get_cached("techweek")
+    if cached is not None:
+        return cached
+
+    try:
+        options = webdriver.ChromeOptions()
+        options.add_argument('--headless')
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-gpu')
+        options.add_argument('user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36')
+        options.add_argument('--disable-blink-features=AutomationControlled')
+
+        driver = webdriver.Chrome(
+            service=Service(ChromeDriverManager().install()),
+            options=options
+        )
+
+        driver.get("https://www.tech-week.com/calendar/nyc")
+        time.sleep(5)
+
+        events = []
+
+        try:
+            # Wait for any content to load
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_all_elements_located((By.TAG_NAME, "body"))
+            )
+
+            # Try multiple parsing strategies
+            # Strategy 1: Look for table rows
+            event_rows = driver.find_elements(By.TAG_NAME, "tr")
+
+            if len(event_rows) > 0:
+                for row in event_rows:
+                    try:
+                        cells = row.find_elements(By.TAG_NAME, "td")
+                        if len(cells) >= 2:
+                            # Try to find link with event name
+                            all_links = row.find_elements(By.TAG_NAME, "a")
+                            if all_links:
+                                # Usually event name is in one of the first 2-3 links
+                                for link in all_links[:3]:
+                                    event_name = link.text.strip()
+                                    if event_name and len(event_name) > 3:
+                                        event_url = link.get_attribute("href")
+
+                                        # Extract cell text for metadata
+                                        cell_texts = [c.text.strip() for c in cells]
+                                        location = "New York"
+                                        time_str = ""
+
+                                        if cell_texts and cell_texts[0]:
+                                            time_str = cell_texts[0]
+                                        if len(cell_texts) > 2:
+                                            location = cell_texts[-1]
+
+                                        # Filter out virtual
+                                        if location.lower() != "virtual (nyc)":
+                                            today = datetime.now().date()
+                                            start_date = today.strftime("%Y-%m-%d")
+
+                                            events.append({
+                                                "name": event_name[:100],
+                                                "description": "NYC Tech Week event",
+                                                "start": f"{start_date} {time_str}" if time_str else f"{start_date} 18:00",
+                                                "venue": location,
+                                                "is_free": True,
+                                                "url": event_url if event_url and event_url.startswith("http") else f"https://www.tech-week.com{event_url}",
+                                            })
+                                        break
+                    except:
+                        continue
+
+            # Strategy 2: Look for divs with event-like content
+            if len(events) == 0:
+                divs = driver.find_elements(By.CSS_SELECTOR, "div[data-event], div[class*='event']")
+                for div in divs[:30]:
+                    try:
+                        text_content = div.text.strip()
+                        links = div.find_elements(By.TAG_NAME, "a")
+                        if text_content and links:
+                            event_name = links[0].text.strip() if links else text_content[:50]
+                            event_url = links[0].get_attribute("href") if links else ""
+
+                            if event_name:
+                                today = datetime.now().date()
+                                events.append({
+                                    "name": event_name[:100],
+                                    "description": "NYC Tech Week event",
+                                    "start": f"{today.strftime('%Y-%m-%d')} 18:00",
+                                    "venue": "New York",
+                                    "is_free": True,
+                                    "url": event_url if event_url and event_url.startswith("http") else f"https://www.tech-week.com{event_url}",
+                                })
+                    except:
+                        continue
+
+        except:
+            pass
+
+        driver.quit()
+        result = list(set([e["name"] for e in events]))  # Remove duplicates
+        result = [e for e in events if e["name"] in result[:25]]  # Keep first 25 unique
+        _set_cache("techweek", result)
+        return result
+
+    except Exception as e:
+        return []
+
+
 def rank_events(events, user_goals):
     client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
 
@@ -552,12 +665,13 @@ def optimize():
 
     all_events = []
     # Fetch from all sources in parallel
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor(max_workers=5) as executor:
         futures = {
             executor.submit(fetch_ticketmaster_events): "ticketmaster",
             executor.submit(fetch_meetup_events): "meetup",
             executor.submit(fetch_eventbrite_events): "eventbrite",
             executor.submit(fetch_luma_events): "luma",
+            executor.submit(fetch_techweek_events): "techweek",
         }
         for future in as_completed(futures):
             try:
