@@ -109,24 +109,15 @@
                         Find Events
                     </button>
 
-                    <div class="grid grid-cols-1 md:grid-cols-[auto,1fr] gap-3 items-end">
-                        <div>
-                            <label for="priceFilter" class="block text-xs text-slate-400 mb-1.5">Budget</label>
-                            <select id="priceFilter" class="w-full md:w-auto min-w-[110px] px-2 py-1.5 text-xs rounded-md bg-slate-800 border border-slate-600 text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-300">
-                                <option value="all" selected>All</option>
-                                <option value="free">Free only</option>
-                                <option value="paid">Paid only</option>
-                            </select>
+                    <input type="hidden" id="priceFilter" value="all">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1.5">Time Range</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button type="button" data-filter="this-week" class="filter-btn w-full px-3 py-2 text-xs bg-blue-100 text-slate-900 rounded-md font-medium hover:bg-blue-50 border border-blue-200 transition">This Week</button>
+                            <button type="button" data-filter="today"     class="filter-btn w-full px-3 py-2 text-xs bg-slate-800 text-slate-300 rounded-md font-medium border border-slate-600 hover:bg-slate-700 transition">Today</button>
+                            <button type="button" data-filter="next-week" class="filter-btn w-full px-3 py-2 text-xs bg-slate-800 text-slate-300 rounded-md font-medium border border-slate-600 hover:bg-slate-700 transition">Next Week</button>
                         </div>
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1.5">Time Range</label>
-                            <div class="grid grid-cols-3 gap-2">
-                                <button type="button" data-filter="this-week" class="filter-btn w-full px-3 py-2 text-xs bg-blue-100 text-slate-900 rounded-md font-medium hover:bg-blue-50 border border-blue-200 transition">This Week</button>
-                                <button type="button" data-filter="today"     class="filter-btn w-full px-3 py-2 text-xs bg-slate-800 text-slate-300 rounded-md font-medium border border-slate-600 hover:bg-slate-700 transition">Today</button>
-                                <button type="button" data-filter="next-week" class="filter-btn w-full px-3 py-2 text-xs bg-slate-800 text-slate-300 rounded-md font-medium border border-slate-600 hover:bg-slate-700 transition">Next Week</button>
-                            </div>
-                            <input type="hidden" id="dateFilter" value="this-week">
-                        </div>
+                        <input type="hidden" id="dateFilter" value="this-week">
                     </div>
                 </form>
 
