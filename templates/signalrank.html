@@ -24,6 +24,17 @@
     }
     .slide-in { animation: slideIn 0.4s ease; }
     .fade-in  { animation: slideIn 0.25s ease; }
+    #tipBoxes {
+        opacity: 1;
+        max-height: 200px;
+        overflow: hidden;
+        transition: opacity 0.6s ease, max-height 0.6s ease, margin 0.6s ease;
+    }
+    #tipBoxes.fading {
+        opacity: 0;
+        max-height: 0;
+        margin-bottom: 0;
+    }
 </style>
 {% endblock %}
 
@@ -35,8 +46,8 @@
             <p class="text-sm text-slate-400">Local events, ranked for you</p>
         </div>
 
-        <!-- Tip boxes -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6" id="tipBoxes">
+        <!-- Tip boxes: first visit only, auto-fades after 6s -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 transition-all duration-700" id="tipBoxes" style="display:none;">
             <div class="flex items-start gap-3 bg-slate-900/50 border border-slate-800 rounded-xl px-4 py-3">
                 <span class="text-base mt-0.5">💬</span>
                 <div>
@@ -149,6 +160,27 @@
 
 {% block scripts %}
 <script>
+    // First-visit tip boxes: show once, fade out after 6s, never again
+    (function() {
+        const tipBoxes = document.getElementById('tipBoxes');
+        if (!tipBoxes) return;
+
+        if (!localStorage.getItem('sr_tips_seen')) {
+            // First visit: show the boxes
+            tipBoxes.style.display = '';
+
+            // After 6s, fade them out
+            setTimeout(() => {
+                tipBoxes.classList.add('fading');
+                // After fade completes, remove from layout entirely and mark seen
+                setTimeout(() => {
+                    tipBoxes.remove();
+                    localStorage.setItem('sr_tips_seen', '1');
+                }, 650);
+            }, 6000);
+        }
+    })();
+
     function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
