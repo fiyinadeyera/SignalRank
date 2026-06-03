@@ -14,6 +14,7 @@
 </head>
 <body class="bg-slate-950 min-h-screen text-slate-100">
 
+    {% block nav %}
     <nav class="fixed top-0 left-0 right-0 z-50 border-b border-slate-800/60 bg-slate-950/80 backdrop-blur-md">
         <div class="mx-auto max-w-5xl px-5 h-12 flex items-center justify-between">
             <div class="flex items-center gap-1">
@@ -24,10 +25,11 @@
             </div>
         </div>
     </nav>
+    <div class="pt-12">{% endblock %}
 
-    <div class="pt-12">
         {% block content %}{% endblock %}
-    </div>
+
+    {% block nav_close %}</div>{% endblock %}
 
     {% block scripts %}{% endblock %}
 </body>
