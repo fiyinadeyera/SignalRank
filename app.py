@@ -681,18 +681,20 @@ def optimize():
                 pass
 
     if not all_events:
+        # No live events — skip filters and use samples so the app always works
         all_events = _build_sample_events()
         is_live = False
     else:
         is_live = True
+        # Only filter live events — samples are always shown as-is
+        start_date, end_date = get_date_range(date_filter)
+        all_events = filter_events_by_date(all_events, start_date, end_date)
+        all_events = filter_events_by_price(all_events, price_filter)
 
-    # Filter by date
-    start_date, end_date = get_date_range(date_filter)
-    all_events = filter_events_by_date(all_events, start_date, end_date)
-    all_events = filter_events_by_price(all_events, price_filter)
-
-    if not all_events:
-        return jsonify({"error": "No events found for the selected filters"}), 400
+        if not all_events:
+            # Live events existed but all filtered out — fall back to samples
+            all_events = _build_sample_events()
+            is_live = False
 
     try:
         ranked = rank_events(all_events, goals)
