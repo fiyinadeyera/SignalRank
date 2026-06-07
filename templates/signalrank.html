@@ -366,9 +366,10 @@
             if (scoreNum >= 8) scoreBg = 'bg-green-900/30 text-green-300';
             else if (scoreNum >= 6) scoreBg = 'bg-blue-900/30 text-blue-300';
             const fullEvent = allEvents.find(e => e.name.toLowerCase() === event.name.toLowerCase());
-            const eventUrl  = fullEvent?.url || '';
-            const eventTime = fullEvent?.start || '';
-            const eventId   = event.name;
+            const eventUrl   = fullEvent?.url || '';
+            const eventTime  = fullEvent?.start || '';
+            const eventVenue = fullEvent?.venue || '';
+            const eventId    = event.name;
             let timeStr = '';
             if (eventTime) { const parts = eventTime.split(' '); timeStr = parts.length > 1 ? parts[1] : parts[0]; }
             const isSaved = !!savedEvents[eventId];
@@ -386,7 +387,10 @@
                                 <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${scoreBg}">${event.score}</span>
                                 <span class="text-xs px-2 py-0.5 rounded-full ${event.isPaid ? 'bg-amber-900/30 text-amber-300' : 'bg-emerald-900/30 text-emerald-300'}">${event.isPaid ? 'PAID' : 'FREE'}</span>
                                 ${timeStr ? `<span class="text-xs text-slate-400">${escapeHtml(timeStr)}</span>` : ''}
-                                ${eventUrl && eventUrl !== 'https://example.com' ? `<a href="${eventUrl}" target="_blank" class="text-xs text-blue-400 hover:text-blue-300 transition ml-auto">Register →</a>` : ''}
+                            </div>
+                            <div class="flex items-center gap-3 mt-3 pt-3 border-t border-slate-700/50">
+                                ${eventUrl && eventUrl !== 'https://example.com' ? `<a href="${eventUrl}" target="_blank" class="text-xs text-blue-400 hover:text-blue-300 transition font-medium">Register</a>` : ''}
+                                <button class="calendar-btn text-xs text-slate-400 hover:text-slate-200 transition font-medium" data-name="${escapeHtml(event.name)}" data-time="${escapeHtml(eventTime)}" data-venue="${escapeHtml(eventVenue)}">+ Calendar</button>
                             </div>
                         </div>
                     </div>
@@ -406,7 +410,7 @@
             return aD.localeCompare(bD);
         });
         document.getElementById("resultContent").innerHTML = renderCards(sorted);
-        attachSaveListeners();
+        attachSaveListeners(); attachCalendarListeners();
     });
 
     function setButtonGroupState(buttons, activeBtn) {
@@ -546,7 +550,7 @@
             document.getElementById("infoBadge").textContent = data.is_live ? `Live events (${data.event_count} found)` : `Sample events — add API keys for live results`;
             const resultEl = document.getElementById("result");
             resultEl.classList.remove("hidden"); resultEl.classList.add("slide-in");
-            attachSaveListeners(); showLoading(false);
+            attachSaveListeners(); attachCalendarListeners(); showLoading(false);
             submitBtn.disabled = false; submitBtn.classList.remove("opacity-70","cursor-not-allowed"); submitBtn.textContent = "Done";
             setTimeout(() => { submitBtn.textContent = defaultSubmitText; }, 800);
             setupTabs(data.events);
@@ -595,6 +599,71 @@
             favoritesTab.classList.add('bg-blue-600','text-white'); favoritesTab.classList.remove('bg-slate-700','text-slate-300');
             rankingsTab.classList.remove('bg-blue-600','text-white'); rankingsTab.classList.add('bg-slate-700','text-slate-300');
             attachSaveListeners();
+        });
+    }
+
+    // Calendar integration
+    function isMobile() {
+        return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    }
+
+    function buildCalendarLinks(name, time, venue) {
+        const date = time ? time.split(' ')[0].replace(/-/g, '') : new Date().toISOString().split('T')[0].replace(/-/g, '');
+        const hour = time && time.includes(':') ? time.split(' ')[1]?.replace(':', '') || '1800' : '1800';
+        const startDT = `${date}T${hour}00`;
+        const endHour = String(parseInt(hour.slice(0,2)) + 1).padStart(2,'0') + hour.slice(2);
+        const endDT   = `${date}T${endHour}00`;
+
+        const google  = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(name)}&dates=${date}T${hour}00Z/${date}T${endHour}00Z&location=${encodeURIComponent(venue)}`;
+        const outlook = `https://outlook.live.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(name)}&startdt=${startDT}&enddt=${endDT}&location=${encodeURIComponent(venue)}`;
+        const ics = `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nSUMMARY:${name}\nDTSTART:${date}T${hour}00Z\nDTEND:${date}T${endHour}00Z\nLOCATION:${venue}\nEND:VEVENT\nEND:VCALENDAR`;
+
+        return { google, outlook, ics };
+    }
+
+    function attachCalendarListeners() {
+        document.querySelectorAll('.calendar-btn').forEach(btn => {
+            btn.replaceWith(btn.cloneNode(true)); // remove old listeners
+        });
+        document.querySelectorAll('.calendar-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const name  = btn.getAttribute('data-name');
+                const time  = btn.getAttribute('data-time');
+                const venue = btn.getAttribute('data-venue');
+                const links = buildCalendarLinks(name, time, venue);
+
+                if (isMobile()) {
+                    window.open(links.google, '_blank');
+                    return;
+                }
+
+                // Remove existing popover
+                document.querySelector('.cal-popover')?.remove();
+
+                const pop = document.createElement('div');
+                pop.className = 'cal-popover fixed z-50 bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-2 min-w-[160px]';
+                pop.style.cssText = `top:${btn.getBoundingClientRect().bottom + 6}px;left:${btn.getBoundingClientRect().left}px`;
+                pop.innerHTML = `
+                    <a href="${links.google}" target="_blank" class="block px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded transition">Google Calendar</a>
+                    <a href="${links.outlook}" target="_blank" class="block px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded transition">Outlook</a>
+                    <button class="ics-dl w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded transition">Apple / ICS download</button>
+                `;
+                document.body.appendChild(pop);
+
+                pop.querySelector('.ics-dl').addEventListener('click', () => {
+                    const blob = new Blob([links.ics], { type: 'text/calendar' });
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `${name}.ics`;
+                    a.click();
+                    pop.remove();
+                });
+
+                setTimeout(() => {
+                    document.addEventListener('click', () => pop.remove(), { once: true });
+                }, 50);
+            });
         });
     }
 </script>
