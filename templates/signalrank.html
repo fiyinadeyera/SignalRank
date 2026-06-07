@@ -385,7 +385,6 @@
                             ${event.reason ? `<p class="text-sm text-slate-300 mb-2">${escapeHtml(event.reason)}</p>` : ''}
                             <div class="flex items-center gap-2 flex-wrap">
                                 <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${scoreBg}">${event.score}</span>
-                                <span class="text-xs px-2 py-0.5 rounded-full ${event.isPaid ? 'bg-amber-900/30 text-amber-300' : 'bg-emerald-900/30 text-emerald-300'}">${event.isPaid ? 'PAID' : 'FREE'}</span>
                                 ${timeStr ? `<span class="text-xs text-slate-400">${escapeHtml(timeStr)}</span>` : ''}
                             </div>
                             <div class="flex items-center gap-3 mt-3 pt-3 border-t border-slate-700/50">
