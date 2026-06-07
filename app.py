@@ -500,6 +500,67 @@ def fetch_techweek_events():
         return []
 
 
+def fetch_nyc_opendata_events():
+    """Fetch NYC events from NYC Open Data (no API key required)"""
+    cached = _get_cached("nyc_opendata")
+    if cached is not None:
+        return cached
+
+    try:
+        # NYC Parks events — free public API
+        today = datetime.now().strftime("%Y-%m-%dT00:00:00")
+        end = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%dT00:00:00")
+
+        r = requests.get(
+            "https://data.cityofnewyork.us/resource/tvpp-9vvx.json",
+            params={
+                "$limit": 50,
+                "$where": f"start_date_time >= '{today}' AND start_date_time <= '{end}'",
+                "$order": "start_date_time ASC",
+            },
+            timeout=10
+        )
+
+        if r.status_code != 200:
+            return []
+
+        events = []
+        seen = set()
+
+        for e in r.json():
+            name = e.get("event_name", "").strip()
+            if not name or name in seen:
+                continue
+            seen.add(name)
+
+            start_raw = e.get("start_date_time", "")
+            try:
+                dt = datetime.fromisoformat(start_raw)
+                start = dt.strftime("%Y-%m-%d %H:%M")
+            except:
+                start = datetime.now().strftime("%Y-%m-%d 18:00")
+
+            borough = e.get("event_borough", "New York")
+            location = e.get("event_location", borough)
+            event_type = e.get("event_type", "")
+
+            events.append({
+                "name": name[:100],
+                "description": f"{event_type} event in {borough}" if event_type else f"NYC event in {borough}",
+                "start": start,
+                "venue": location[:100] if location else borough,
+                "is_free": True,
+                "url": "https://www.nycgovparks.org/events",
+            })
+
+        result = events[:30]
+        _set_cache("nyc_opendata", result)
+        return result
+
+    except Exception:
+        return []
+
+
 def rank_events(events, user_goals):
     client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
 
@@ -665,13 +726,14 @@ def optimize():
 
     all_events = []
     # Fetch from all sources in parallel
-    with ThreadPoolExecutor(max_workers=5) as executor:
+    with ThreadPoolExecutor(max_workers=6) as executor:
         futures = {
             executor.submit(fetch_ticketmaster_events): "ticketmaster",
             executor.submit(fetch_meetup_events): "meetup",
             executor.submit(fetch_eventbrite_events): "eventbrite",
             executor.submit(fetch_luma_events): "luma",
             executor.submit(fetch_techweek_events): "techweek",
+            executor.submit(fetch_nyc_opendata_events): "nyc_opendata",
         }
         for future in as_completed(futures):
             try:
