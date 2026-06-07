@@ -13,78 +13,66 @@
         100% { transform: rotate(360deg); }
     }
     .spinner { animation: spin 1s linear infinite; }
+
     @keyframes pulseGlow {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(147, 197, 253, 0.55); }
-        50% { box-shadow: 0 0 0 10px rgba(147, 197, 253, 0); }
+        0%, 100% { box-shadow: 0 0 0 0 rgba(147,197,253,0.55); }
+        50%       { box-shadow: 0 0 0 10px rgba(147,197,253,0); }
     }
     .mic-listening { animation: pulseGlow 1.3s ease-in-out infinite; }
+
     @keyframes slideIn {
         from { opacity: 0; transform: translateY(10px); }
         to   { opacity: 1; transform: translateY(0); }
     }
     .slide-in { animation: slideIn 0.4s ease; }
     .fade-in  { animation: slideIn 0.25s ease; }
+
+    @keyframes shimmer {
+        0%   { opacity: 0.4; }
+        50%  { opacity: 0.7; }
+        100% { opacity: 0.4; }
+    }
+    .skeleton { animation: shimmer 1.6s ease-in-out infinite; }
+
     /* Product tour */
     #tourBackdrop {
-        position: fixed;
-        inset: 0;
-        background: rgba(2, 6, 23, 0.6);
-        z-index: 40;
-        opacity: 0;
+        position: fixed; inset: 0;
+        background: rgba(2,6,23,0.6);
+        z-index: 40; opacity: 0;
         transition: opacity 0.3s ease;
         pointer-events: none;
     }
-    #tourBackdrop.visible {
-        opacity: 1;
-        pointer-events: all;
-    }
+    #tourBackdrop.visible { opacity: 1; pointer-events: all; }
+
     #tourCallout {
-        position: fixed;
-        z-index: 50;
-        width: 260px;
-        opacity: 0;
-        transform: translateY(6px);
+        position: fixed; z-index: 50; width: 260px;
+        opacity: 0; transform: translateY(6px);
         transition: opacity 0.3s ease, transform 0.3s ease;
         pointer-events: none;
     }
-    #tourCallout.visible {
-        opacity: 1;
-        transform: translateY(0);
-        pointer-events: all;
-    }
+    #tourCallout.visible { opacity: 1; transform: translateY(0); pointer-events: all; }
+
     .tour-arrow-up::before {
-        content: '';
-        position: absolute;
-        top: -6px;
-        left: 50%;
-        transform: translateX(-50%);
-        border-left: 7px solid transparent;
-        border-right: 7px solid transparent;
-        border-bottom: 7px solid rgb(51 65 85);
+        content: ''; position: absolute;
+        top: -6px; left: 50%; transform: translateX(-50%);
+        border: 7px solid transparent;
+        border-top: none; border-bottom-color: rgb(51 65 85);
     }
     .tour-arrow-down::after {
-        content: '';
-        position: absolute;
-        bottom: -6px;
-        left: 50%;
-        transform: translateX(-50%);
-        border-left: 7px solid transparent;
-        border-right: 7px solid transparent;
-        border-top: 7px solid rgb(51 65 85);
+        content: ''; position: absolute;
+        bottom: -6px; left: 50%; transform: translateX(-50%);
+        border: 7px solid transparent;
+        border-bottom: none; border-top-color: rgb(51 65 85);
     }
-    .tour-dot {
-        width: 5px; height: 5px;
-        border-radius: 50%;
-        background: rgb(71 85 105);
-        transition: background 0.2s;
-    }
-    .tour-dot.active { background: rgb(148 163 184); }
+    .tour-dot { width:5px; height:5px; border-radius:50%; background:rgb(71 85 105); transition:background 0.2s; }
+    .tour-dot.active { background:rgb(148 163 184); }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.16),_transparent_45%),radial-gradient(circle_at_70%_10%,_rgba(168,85,247,0.14),_transparent_38%)]">
     <div class="mx-auto w-full max-w-3xl px-4 py-8 md:py-12">
+
         <div class="mb-2">
             <a href="/" class="inline-flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-400 transition">
                 <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
@@ -110,11 +98,12 @@
 
         <div class="bg-slate-900/75 backdrop-blur-xl border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden">
             <div class="p-6 md:p-8">
+
                 <form id="goalForm" class="space-y-4">
                     <div>
                         <div class="flex flex-col gap-2 mb-3 md:flex-row md:items-center md:justify-between">
                             <label for="goals" class="block text-sm font-semibold text-slate-100">Describe your goal</label>
-                            <div class="flex flex-wrap gap-1.5 justify-start md:justify-end" id="goalPresets">
+                            <div class="flex gap-1.5" id="goalPresets">
                                 <button type="button" class="preset-chip px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-800 border border-slate-600 text-slate-300 hover:bg-slate-700 transition" data-text="networking events for professionals">Networking</button>
                                 <button type="button" class="preset-chip px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-800 border border-slate-600 text-slate-300 hover:bg-slate-700 transition" data-text="events to practice hobbies and meet people with similar interests">Hobbies</button>
                             </div>
@@ -127,21 +116,20 @@
                                 rows="3"
                             ></textarea>
                             <div class="absolute right-3 bottom-3 flex gap-2">
-                                <button id="clearBtn" type="button" class="p-2 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 border border-slate-500/70 transition disabled:opacity-30 disabled:cursor-not-allowed" title="Clear input" aria-label="Clear goals">✕</button>
-                                <button id="voiceBtn" type="button" class="p-2 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 border border-slate-500/70 transition disabled:opacity-50 disabled:cursor-not-allowed" title="Dictate goals" aria-label="Dictate goals with microphone">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-5 h-5" aria-hidden="true">
+                                <button id="clearBtn" type="button" class="p-2 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 border border-slate-500/70 transition disabled:opacity-30 disabled:cursor-not-allowed" aria-label="Clear">✕</button>
+                                <button id="voiceBtn" type="button" class="p-2 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 border border-slate-500/70 transition" aria-label="Dictate">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-5 h-5">
                                         <rect x="9" y="3" width="6" height="11" rx="3"></rect>
                                         <path d="M5.5 10.5a6.5 6.5 0 1 0 13 0"></path>
-                                        <path d="M12 17v4"></path>
-                                        <path d="M9 21h6"></path>
+                                        <path d="M12 17v4M9 21h6"></path>
                                     </svg>
                                 </button>
                             </div>
                         </div>
-                        <div class="text-xs text-slate-400 mt-1" id="charCount"></div>
+                        <div class="text-xs text-slate-500 mt-1" id="charCount"></div>
                     </div>
 
-                    <button id="submitBtn" type="submit" class="w-full py-2.5 text-sm bg-gradient-to-r from-blue-100 to-sky-100 hover:from-blue-50 hover:to-sky-50 text-slate-900 font-semibold rounded-lg transition transform hover:scale-[1.01] active:scale-[0.99] shadow-md shadow-blue-900/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+                    <button id="submitBtn" type="submit" class="w-full py-2.5 text-sm bg-gradient-to-r from-blue-100 to-sky-100 hover:from-blue-50 hover:to-sky-50 text-slate-900 font-semibold rounded-lg transition hover:scale-[1.01] active:scale-[0.99] shadow-md shadow-blue-900/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
                         Find Events
                     </button>
 
@@ -149,7 +137,7 @@
                     <div>
                         <label class="block text-xs text-slate-400 mb-1.5">Time Range</label>
                         <div class="grid grid-cols-3 gap-2">
-                            <button type="button" data-filter="this-week" class="filter-btn w-full px-3 py-2 text-xs bg-blue-100 text-slate-900 rounded-md font-medium hover:bg-blue-50 border border-blue-200 transition">This Week</button>
+                            <button type="button" data-filter="this-week" class="filter-btn w-full px-3 py-2 text-xs bg-blue-100 text-slate-900 rounded-md font-medium border border-blue-200 transition">This Week</button>
                             <button type="button" data-filter="today"     class="filter-btn w-full px-3 py-2 text-xs bg-slate-800 text-slate-300 rounded-md font-medium border border-slate-600 hover:bg-slate-700 transition">Today</button>
                             <button type="button" data-filter="next-week" class="filter-btn w-full px-3 py-2 text-xs bg-slate-800 text-slate-300 rounded-md font-medium border border-slate-600 hover:bg-slate-700 transition">Next Week</button>
                         </div>
@@ -159,33 +147,41 @@
 
                 <div id="error" class="hidden mt-6 p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-300 text-sm"></div>
 
-                <div id="loading" class="hidden mt-8 text-center bg-slate-800/50 border border-slate-700 rounded-xl p-4 fade-in">
-                    <div class="spinner w-10 h-10 border-4 border-slate-600 border-t-blue-500 rounded-full mx-auto mb-3"></div>
-                    <p class="text-slate-400">Ranking events for you...</p>
+                <!-- Loading skeleton -->
+                <div id="loading" class="hidden mt-8 space-y-3 fade-in">
+                    <p class="text-xs text-slate-500 mb-4">Ranking events for you...</p>
+                    <div class="skeleton bg-slate-800/60 border border-slate-700 rounded-xl p-4 h-24"></div>
+                    <div class="skeleton bg-slate-800/60 border border-slate-700 rounded-xl p-4 h-24"></div>
+                    <div class="skeleton bg-slate-800/60 border border-slate-700 rounded-xl p-4 h-24"></div>
                 </div>
 
                 <div id="result" class="hidden mt-8 space-y-4">
+                    <!-- Search context -->
+                    <div id="searchContext" class="flex items-center justify-between text-xs text-slate-500 pb-1">
+                        <span id="searchContextText"></span>
+                        <button id="newSearchBtn" class="hover:text-slate-300 transition">New search</button>
+                    </div>
+
                     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div>
                             <h2 class="text-xl font-semibold text-white">Top Matches</h2>
                             <p class="text-sm text-slate-400 mt-1" id="resultCount"></p>
                         </div>
-                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-                            <div class="flex gap-2">
-                                <button id="rankingsTab"  class="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Rankings</button>
-                                <button id="favoritesTab" class="px-4 py-2 text-sm font-medium bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition">★ <span id="favCount">0</span></button>
-                            </div>
-                            <select id="sortBy" class="px-3 py-2 text-sm bg-slate-700 text-slate-200 rounded-lg border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                                <option value="score">Sort by Score</option>
-                                <option value="price">Free First</option>
-                                <option value="date">Soonest First</option>
+                        <div class="flex gap-2 items-center">
+                            <button id="rankingsTab"  class="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Rankings</button>
+                            <button id="favoritesTab" class="px-4 py-2 text-sm font-medium bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition">★ <span id="favCount">0</span></button>
+                            <select id="sortBy" class="px-3 py-2 text-sm bg-slate-700 text-slate-200 rounded-lg border border-slate-600 focus:outline-none">
+                                <option value="score">By Score</option>
+                                <option value="date">Soonest</option>
                             </select>
                         </div>
                     </div>
+
                     <div class="space-y-3"        id="resultContent"></div>
                     <div class="space-y-3 hidden" id="favoritesContent"></div>
-                    <div id="infoBadge" class="mt-6 inline-block px-4 py-2 bg-blue-500/10 border border-blue-300/50 text-blue-200 rounded-lg text-sm font-medium"></div>
+                    <div id="infoBadge" class="mt-4 inline-block px-3 py-1.5 bg-blue-500/10 border border-blue-300/30 text-blue-300 rounded-lg text-xs"></div>
                 </div>
+
             </div>
         </div>
     </div>
@@ -194,42 +190,48 @@
 
 {% block scripts %}
 <script>
-    // Product tour — first visit only
+    // ── Utilities ──────────────────────────────────────────────────────────────
+
+    function escapeHtml(text) {
+        const d = document.createElement('div');
+        d.textContent = text;
+        return d.innerHTML;
+    }
+
+    function showLoading(show) {
+        document.getElementById("loading").classList.toggle("hidden", !show);
+    }
+
+    function showError(msg) {
+        const el = document.getElementById("error");
+        if (msg) { el.textContent = msg; el.classList.remove("hidden"); }
+        else      { el.classList.add("hidden"); }
+    }
+
+    function updateFavoriteCount() {
+        const saved = JSON.parse(localStorage.getItem('savedEvents') || '{}');
+        document.getElementById("favCount").textContent = Object.keys(saved).length;
+    }
+
+    // ── Product tour (first visit only) ────────────────────────────────────────
+
     (function () {
         if (localStorage.getItem('sr_tips_seen')) return;
 
         const steps = [
-            {
-                target: '#goals',
-                title: 'Tell it what you want',
-                text: 'Type your goal in plain English. The AI reads it and ranks every event against it.',
-                arrow: 'up'
-            },
-            {
-                target: '#goalPresets',
-                title: 'Or tap a quick pick',
-                text: 'Networking, Comedy, Product — tap any chip to fill your goal instantly.',
-                arrow: 'up'
-            },
-            {
-                target: '.filter-btn',
-                title: 'Set your time window',
-                text: 'Pick today, this week, or next week. Then hit Find Events.',
-                arrow: 'down'
-            }
+            { target: '#goals',      title: 'Tell it what you want',  text: 'Type your goal in plain English. The AI ranks every event against it.', arrow: 'up' },
+            { target: '#goalPresets',title: 'Or tap a quick pick',    text: 'Tap Networking or Hobbies to fill your goal instantly.',                arrow: 'up' },
+            { target: '.filter-btn', title: 'Set your time window',   text: 'Pick today, this week, or next week. Then hit Find Events.',            arrow: 'down' }
         ];
 
-        const backdrop  = document.getElementById('tourBackdrop');
-        const callout   = document.getElementById('tourCallout');
-        const titleEl   = document.getElementById('tourTitle');
-        const textEl    = document.getElementById('tourText');
-        const dotsEl    = document.getElementById('tourDots');
-        const skipBtn   = document.getElementById('tourSkip');
+        const backdrop = document.getElementById('tourBackdrop');
+        const callout  = document.getElementById('tourCallout');
+        const titleEl  = document.getElementById('tourTitle');
+        const textEl   = document.getElementById('tourText');
+        const dotsEl   = document.getElementById('tourDots');
+        const skipBtn  = document.getElementById('tourSkip');
+        let current = 0, timer = null;
 
-        let current = 0;
-        let timer   = null;
-
-        // Build dots
         steps.forEach((_, i) => {
             const d = document.createElement('div');
             d.className = 'tour-dot' + (i === 0 ? ' active' : '');
@@ -239,148 +241,90 @@
         function position(step) {
             const target = document.querySelector(step.target);
             if (!target) return;
-
             const rect = target.getBoundingClientRect();
-            const cW   = 260;
-            const gap  = 14;
-
-            // Horizontal: centre on target, clamp to viewport
-            let left = rect.left + rect.width / 2 - cW / 2;
-            left = Math.max(12, Math.min(left, window.innerWidth - cW - 12));
+            const cW = 260, gap = 14;
+            let left = Math.max(12, Math.min(rect.left + rect.width / 2 - cW / 2, window.innerWidth - cW - 12));
             callout.style.left = left + 'px';
-
-            // Vertical: above or below
             if (step.arrow === 'up') {
-                callout.style.top  = (rect.bottom + window.scrollY + gap) + 'px';
-                callout.classList.add('tour-arrow-up');
-                callout.classList.remove('tour-arrow-down');
+                callout.style.top = (rect.bottom + window.scrollY + gap) + 'px';
+                callout.classList.add('tour-arrow-up'); callout.classList.remove('tour-arrow-down');
             } else {
-                callout.style.top  = (rect.top + window.scrollY - gap - 120) + 'px';
-                callout.classList.add('tour-arrow-down');
-                callout.classList.remove('tour-arrow-up');
+                callout.style.top = (rect.top + window.scrollY - gap - 120) + 'px';
+                callout.classList.add('tour-arrow-down'); callout.classList.remove('tour-arrow-up');
             }
-
-            // Nudge arrow to point at target
-            const arrowOffset = (rect.left + rect.width / 2) - left;
-            callout.style.setProperty('--arrow-left', Math.max(20, Math.min(arrowOffset, cW - 20)) + 'px');
         }
 
-        function show(index) {
-            const step = steps[index];
-
-            // Hide then reposition (avoids flash)
+        function show(i) {
             callout.classList.remove('visible');
             setTimeout(() => {
-                titleEl.textContent = step.title;
-                textEl.textContent  = step.text;
-
-                // Update dots
-                dotsEl.querySelectorAll('.tour-dot').forEach((d, i) => {
-                    d.classList.toggle('active', i === index);
-                });
-
-                position(step);
+                titleEl.textContent = steps[i].title;
+                textEl.textContent  = steps[i].text;
+                dotsEl.querySelectorAll('.tour-dot').forEach((d, j) => d.classList.toggle('active', j === i));
+                position(steps[i]);
                 callout.classList.add('visible');
             }, 200);
-
-            // Auto-advance after 3.5s
             clearTimeout(timer);
-            timer = setTimeout(advance, 3500);
-        }
-
-        function advance() {
-            current++;
-            if (current < steps.length) {
-                show(current);
-            } else {
-                dismiss();
-            }
+            timer = setTimeout(() => { current < steps.length - 1 ? show(++current) : dismiss(); }, 3500);
         }
 
         function dismiss() {
             clearTimeout(timer);
-            backdrop.classList.remove('visible');
-            callout.classList.remove('visible');
-            setTimeout(() => {
-                backdrop.remove();
-                callout.remove();
-            }, 350);
+            backdrop.classList.remove('visible'); callout.classList.remove('visible');
+            setTimeout(() => { backdrop.remove(); callout.remove(); }, 350);
             localStorage.setItem('sr_tips_seen', '1');
         }
 
         skipBtn.addEventListener('click', dismiss);
         backdrop.addEventListener('click', dismiss);
-
-        // Kick off after a short delay so layout is ready
-        setTimeout(() => {
-            backdrop.classList.add('visible');
-            show(0);
-        }, 600);
+        setTimeout(() => { backdrop.classList.add('visible'); show(0); }, 600);
     })();
 
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
+    // ── Parse Claude's ranked response ─────────────────────────────────────────
 
     function parseResults(text) {
         const events = [];
-        const lines = text.split('\n').map(line => line.trim()).filter(line => line);
-        let currentEvent = null;
-        let skipUntilFirstEvent = true;
-        for (const line of lines) {
+        let current = null, skip = true;
+        for (const line of text.split('\n').map(l => l.trim()).filter(Boolean)) {
             if (line.startsWith('Score:')) {
-                if (currentEvent) {
-                    const scoreMatch = line.match(/Score:\s*(\d+)\/10\s*\|\s*(FREE|PAID)/i);
-                    if (scoreMatch) {
-                        currentEvent.score = scoreMatch[1] + '/10';
-                        currentEvent.isPaid = scoreMatch[2].toUpperCase() === 'PAID';
-                        events.push(currentEvent);
-                        skipUntilFirstEvent = false;
-                    }
+                if (current) {
+                    const m = line.match(/Score:\s*(\d+)\/10\s*\|\s*(FREE|PAID)/i);
+                    if (m) { current.score = m[1] + '/10'; current.isPaid = m[2].toUpperCase() === 'PAID'; events.push(current); skip = false; }
                 }
-                currentEvent = null;
-            } else if (skipUntilFirstEvent && !line.match(/^[A-Z]/)) {
+                current = null;
+            } else if (skip && !line.match(/^[A-Z]/)) {
                 continue;
             } else if (line.startsWith('REASON:')) {
-                if (currentEvent) currentEvent.reason = line.replace('REASON:', '').trim();
-            } else if (currentEvent === null && line && !line.includes('Score:')) {
-                currentEvent = { name: line, description: '', reason: '', score: '?/10', isPaid: false };
-            } else if (currentEvent && !line.startsWith('Score:') && !line.startsWith('REASON:') && line) {
-                if (currentEvent.description) currentEvent.description += ' ' + line;
-                else currentEvent.description = line;
+                if (current) current.reason = line.replace('REASON:', '').trim();
+            } else if (!current) {
+                current = { name: line, reason: '', score: '?/10', isPaid: false };
             }
         }
         return events.slice(0, 6);
     }
 
-    // renderCards is defined at outer scope so sortBy handler can call it without closure issues
+    // ── Render event cards ──────────────────────────────────────────────────────
+
     function renderCards(eventsToRender) {
-        const allEvents   = window.currentAllEvents  || [];
+        const allEvents   = window.currentAllEvents || [];
         const savedEvents = JSON.parse(localStorage.getItem('savedEvents') || '{}');
-        if (eventsToRender.length === 0) return '<div class="text-center py-8 text-slate-400">No events found. Try adjusting your filters.</div>';
-        return eventsToRender.map((event, index) => {
+        if (!eventsToRender.length) return '<div class="text-center py-8 text-slate-400">No events found. Try a different goal or time range.</div>';
+        return eventsToRender.map((event, i) => {
             const scoreNum = parseInt(event.score);
-            let scoreBg = 'bg-orange-900/30 text-orange-300';
-            if (scoreNum >= 8) scoreBg = 'bg-green-900/30 text-green-300';
-            else if (scoreNum >= 6) scoreBg = 'bg-blue-900/30 text-blue-300';
-            const fullEvent = allEvents.find(e => e.name.toLowerCase() === event.name.toLowerCase());
-            const eventUrl   = fullEvent?.url || '';
-            const eventTime  = fullEvent?.start || '';
-            const eventVenue = fullEvent?.venue || '';
-            const eventId    = event.name;
-            let timeStr = '';
-            if (eventTime) { const parts = eventTime.split(' '); timeStr = parts.length > 1 ? parts[1] : parts[0]; }
-            const isSaved = !!savedEvents[eventId];
+            const scoreBg  = scoreNum >= 8 ? 'bg-green-900/30 text-green-300' : scoreNum >= 6 ? 'bg-blue-900/30 text-blue-300' : 'bg-orange-900/30 text-orange-300';
+            const full     = allEvents.find(e => e.name.toLowerCase() === event.name.toLowerCase());
+            const url      = full?.url || '';
+            const time     = full?.start || '';
+            const venue    = full?.venue || '';
+            const timeStr  = time.includes(' ') ? time.split(' ')[1] : '';
+            const saved    = !!savedEvents[event.name];
             return `
                 <div class="bg-slate-800/45 border border-slate-600/80 rounded-xl p-4 hover:bg-slate-800/70 transition">
                     <div class="flex gap-4">
-                        <div class="text-xl font-semibold text-slate-300 flex-shrink-0 w-7">${index + 1}</div>
+                        <div class="text-xl font-semibold text-slate-300 flex-shrink-0 w-7">${i + 1}</div>
                         <div class="flex-1">
                             <div class="flex justify-between items-start gap-2 mb-2">
                                 <h3 class="font-medium text-slate-100 text-[15px]">${escapeHtml(event.name)}</h3>
-                                <button class="save-btn text-xl flex-shrink-0 transition ${isSaved ? 'text-yellow-400' : 'text-slate-500 hover:text-slate-300'}" data-event-id="${escapeHtml(eventId)}" title="${isSaved ? 'Remove from favorites' : 'Save to favorites'}">${isSaved ? '★' : '☆'}</button>
+                                <button class="save-btn text-xl flex-shrink-0 transition ${saved ? 'text-yellow-400' : 'text-slate-500 hover:text-slate-300'}" data-event-id="${escapeHtml(event.name)}">${saved ? '★' : '☆'}</button>
                             </div>
                             ${event.reason ? `<p class="text-sm text-slate-300 mb-2">${escapeHtml(event.reason)}</p>` : ''}
                             <div class="flex items-center gap-2 flex-wrap">
@@ -388,8 +332,8 @@
                                 ${timeStr ? `<span class="text-xs text-slate-400">${escapeHtml(timeStr)}</span>` : ''}
                             </div>
                             <div class="flex items-center gap-3 mt-3 pt-3 border-t border-slate-700/50">
-                                ${eventUrl && eventUrl !== 'https://example.com' ? `<a href="${eventUrl}" target="_blank" class="text-xs text-blue-400 hover:text-blue-300 transition font-medium">Register</a>` : ''}
-                                <button class="calendar-btn text-xs text-slate-400 hover:text-slate-200 transition font-medium" data-name="${escapeHtml(event.name)}" data-time="${escapeHtml(eventTime)}" data-venue="${escapeHtml(eventVenue)}">+ Calendar</button>
+                                ${url && url !== 'https://example.com' ? `<a href="${escapeHtml(url)}" target="_blank" class="text-xs text-blue-400 hover:text-blue-300 transition font-medium">Register</a>` : ''}
+                                <button class="calendar-btn text-xs text-slate-400 hover:text-slate-200 transition font-medium" data-name="${escapeHtml(event.name)}" data-time="${escapeHtml(time)}" data-venue="${escapeHtml(venue)}">+ Calendar</button>
                             </div>
                         </div>
                     </div>
@@ -397,76 +341,41 @@
         }).join('');
     }
 
-    // sortBy listener set up once — reads from window globals set after each successful search
-    document.getElementById("sortBy").addEventListener("change", function() {
-        if (!window.currentRankedEvents) return;
-        let sorted = [...window.currentRankedEvents];
-        if (this.value === "score") sorted.sort((a,b) => parseInt(b.score) - parseInt(a.score));
-        else if (this.value === "price") sorted = sorted.filter(e => !e.isPaid).concat(sorted.filter(e => e.isPaid));
-        else if (this.value === "date") sorted.sort((a,b) => {
-            const aD = (window.currentAllEvents||[]).find(e=>e.name===a.name)?.start||"";
-            const bD = (window.currentAllEvents||[]).find(e=>e.name===b.name)?.start||"";
-            return aD.localeCompare(bD);
-        });
-        document.getElementById("resultContent").innerHTML = renderCards(sorted);
-        attachSaveListeners(); attachCalendarListeners();
-    });
-
-    function setButtonGroupState(buttons, activeBtn) {
-        buttons.forEach(btn => {
-            btn.classList.remove("bg-blue-100", "border-blue-200", "text-slate-900");
-            btn.classList.add("bg-slate-800", "text-slate-300", "border", "border-slate-600");
-        });
-        activeBtn.classList.remove("bg-slate-800", "text-slate-300", "border", "border-slate-600");
-        activeBtn.classList.add("bg-blue-100", "border-blue-200", "text-slate-900");
-    }
-
-    const dateButtons = Array.from(document.querySelectorAll(".filter-btn"));
-    dateButtons.forEach(btn => {
-        btn.addEventListener("click", e => {
-            e.preventDefault();
-            setButtonGroupState(dateButtons, btn);
-            document.getElementById("dateFilter").value = btn.getAttribute("data-filter");
-        });
-    });
-
-    const goalsInput  = document.getElementById("goals");
-    const voiceBtn    = document.getElementById("voiceBtn");
-    const clearBtn    = document.getElementById("clearBtn");
-    const submitBtn   = document.getElementById("submitBtn");
-    const charCountEl = document.getElementById("charCount");
-    const defaultSubmitText = submitBtn.textContent.trim();
-
-    function updateInputState() {
-        const len = goalsInput.value.trim().length;
-        submitBtn.disabled = len < 3;
-        clearBtn.disabled  = len === 0;
-        charCountEl.textContent = len === 0 ? "" : `${len} characters`;
-    }
-
-    goalsInput.addEventListener("input", updateInputState);
-    goalsInput.addEventListener("keydown", e => {
-        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (!submitBtn.disabled) document.getElementById("goalForm").dispatchEvent(new Event("submit")); }
-        if (e.key === "Escape") { goalsInput.value = ""; updateInputState(); goalsInput.focus(); }
-    });
-    clearBtn.addEventListener("click", () => { goalsInput.value = ""; updateInputState(); goalsInput.focus(); });
-
-    function updateFavoriteCount() {
+    function renderFavorites(allEvents) {
         const saved = JSON.parse(localStorage.getItem('savedEvents') || '{}');
-        document.getElementById("favCount").textContent = Object.keys(saved).length;
+        const favs  = allEvents.filter(e => saved[e.name]);
+        if (!favs.length) return '<p class="text-slate-400 text-center py-8">No favorites yet. Click the star on any event.</p>';
+        return favs.map((e, i) => `
+            <div class="bg-slate-800/45 border border-slate-600/80 rounded-xl p-4 hover:bg-slate-800/70 transition">
+                <div class="flex gap-4">
+                    <div class="text-xl font-semibold text-slate-300 flex-shrink-0 w-7">${i + 1}</div>
+                    <div class="flex-1">
+                        <div class="flex justify-between items-start gap-2 mb-2">
+                            <h3 class="font-medium text-slate-100 text-[15px]">${escapeHtml(e.name)}</h3>
+                            <button class="save-btn text-xl text-yellow-400 flex-shrink-0 transition" data-event-id="${escapeHtml(e.name)}">★</button>
+                        </div>
+                        <div class="flex items-center gap-3 flex-wrap text-xs text-slate-400">
+                            ${e.venue ? `<span>${escapeHtml(e.venue)}</span>` : ''}
+                            ${e.start ? `<span>${escapeHtml(e.start.split(' ')[1] || e.start)}</span>` : ''}
+                            ${e.url ? `<a href="${escapeHtml(e.url)}" target="_blank" class="text-blue-400 hover:text-blue-300">Register</a>` : ''}
+                        </div>
+                    </div>
+                </div>
+            </div>`).join('');
     }
-    updateFavoriteCount();
+
+    // ── Save button handler ─────────────────────────────────────────────────────
 
     function saveBtnHandler(e) {
         e.preventDefault();
-        const eventId = this.getAttribute('data-event-id');
+        const id    = this.getAttribute('data-event-id');
         const saved = JSON.parse(localStorage.getItem('savedEvents') || '{}');
-        if (saved[eventId]) {
-            delete saved[eventId];
-            this.classList.remove('text-yellow-400'); this.classList.add('text-slate-500'); this.textContent = '☆';
+        if (saved[id]) {
+            delete saved[id];
+            this.classList.replace('text-yellow-400', 'text-slate-500'); this.textContent = '☆';
         } else {
-            saved[eventId] = true;
-            this.classList.remove('text-slate-500'); this.classList.add('text-yellow-400'); this.textContent = '★';
+            saved[id] = true;
+            this.classList.replace('text-slate-500', 'text-yellow-400'); this.textContent = '★';
         }
         localStorage.setItem('savedEvents', JSON.stringify(saved));
         updateFavoriteCount();
@@ -479,41 +388,152 @@
         });
     }
 
-    updateInputState();
+    // ── Calendar ───────────────────────────────────────────────────────────────
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition = null, isListening = false;
-    if (!SpeechRecognition) {
+    function buildCalendarLinks(name, time, venue) {
+        const date    = time ? time.split(' ')[0].replace(/-/g,'') : new Date().toISOString().split('T')[0].replace(/-/g,'');
+        const hour    = time?.split(' ')[1]?.replace(':','') || '1800';
+        const endHour = String(parseInt(hour.slice(0,2)) + 1).padStart(2,'0') + hour.slice(2);
+        const google  = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(name)}&dates=${date}T${hour}00Z/${date}T${endHour}00Z&location=${encodeURIComponent(venue)}`;
+        const outlook = `https://outlook.live.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(name)}&startdt=${date}T${hour}00&enddt=${date}T${endHour}00&location=${encodeURIComponent(venue)}`;
+        const ics     = `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nSUMMARY:${name}\nDTSTART:${date}T${hour}00Z\nDTEND:${date}T${endHour}00Z\nLOCATION:${venue}\nEND:VEVENT\nEND:VCALENDAR`;
+        return { google, outlook, ics };
+    }
+
+    function attachCalendarListeners() {
+        document.querySelectorAll('.calendar-btn').forEach(btn => {
+            btn.replaceWith(btn.cloneNode(true));
+        });
+        document.querySelectorAll('.calendar-btn').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                const links = buildCalendarLinks(btn.dataset.name, btn.dataset.time, btn.dataset.venue);
+                if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) { window.open(links.google, '_blank'); return; }
+                document.querySelector('.cal-popover')?.remove();
+                const pop = document.createElement('div');
+                pop.className = 'cal-popover fixed z-50 bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-2 min-w-[160px]';
+                pop.style.cssText = `top:${btn.getBoundingClientRect().bottom + 6}px;left:${btn.getBoundingClientRect().left}px`;
+                pop.innerHTML = `
+                    <a href="${links.google}"  target="_blank" class="block px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded transition">Google Calendar</a>
+                    <a href="${links.outlook}" target="_blank" class="block px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded transition">Outlook</a>
+                    <button class="ics-dl w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded transition">Apple / ICS</button>`;
+                document.body.appendChild(pop);
+                pop.querySelector('.ics-dl').addEventListener('click', () => {
+                    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([links.ics], {type:'text/calendar'})), download: btn.dataset.name + '.ics' });
+                    a.click(); pop.remove();
+                });
+                setTimeout(() => document.addEventListener('click', () => pop.remove(), { once: true }), 50);
+            });
+        });
+    }
+
+    // ── Date filter buttons ─────────────────────────────────────────────────────
+
+    const dateButtons = Array.from(document.querySelectorAll(".filter-btn"));
+    dateButtons.forEach(btn => btn.addEventListener("click", e => {
+        e.preventDefault();
+        dateButtons.forEach(b => { b.classList.remove("bg-blue-100","border-blue-200","text-slate-900"); b.classList.add("bg-slate-800","text-slate-300","border-slate-600"); });
+        btn.classList.add("bg-blue-100","border-blue-200","text-slate-900"); btn.classList.remove("bg-slate-800","text-slate-300","border-slate-600");
+        document.getElementById("dateFilter").value = btn.dataset.filter;
+    }));
+
+    // ── Input state ─────────────────────────────────────────────────────────────
+
+    const goalsInput  = document.getElementById("goals");
+    const clearBtn    = document.getElementById("clearBtn");
+    const submitBtn   = document.getElementById("submitBtn");
+    const charCountEl = document.getElementById("charCount");
+    const defaultLabel = submitBtn.textContent.trim();
+
+    function updateInputState() {
+        const len = goalsInput.value.trim().length;
+        submitBtn.disabled = len < 3;
+        clearBtn.disabled  = len === 0;
+        charCountEl.textContent = len > 0 ? `${len} characters` : '';
+    }
+
+    goalsInput.addEventListener("input", updateInputState);
+    goalsInput.addEventListener("keydown", e => {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (!submitBtn.disabled) document.getElementById("goalForm").dispatchEvent(new Event("submit")); }
+        if (e.key === "Escape") { goalsInput.value = ""; updateInputState(); goalsInput.focus(); }
+    });
+    clearBtn.addEventListener("click", () => { goalsInput.value = ""; updateInputState(); goalsInput.focus(); });
+
+    updateInputState();
+    updateFavoriteCount();
+
+    // ── Voice input ─────────────────────────────────────────────────────────────
+
+    const voiceBtn = document.getElementById("voiceBtn");
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
         voiceBtn.disabled = true;
     } else {
-        recognition = new SpeechRecognition();
-        recognition.lang = "en-US"; recognition.interimResults = true; recognition.continuous = false;
-        recognition.addEventListener("start", () => { isListening = true; voiceBtn.classList.add("bg-blue-100","text-slate-900","border-blue-200","mic-listening"); });
-        recognition.addEventListener("result", event => {
-            let transcript = "";
-            for (let i = event.resultIndex; i < event.results.length; i++) { if (event.results[i].isFinal) transcript += event.results[i][0].transcript; }
-            if (transcript.trim()) { const cur = goalsInput.value.trim(); goalsInput.value = cur ? `${cur} ${transcript.trim()}` : transcript.trim(); updateInputState(); }
+        const rec = new SR();
+        rec.lang = "en-US"; rec.interimResults = true; rec.continuous = false;
+        let listening = false;
+        rec.addEventListener("start",  () => { listening = true;  voiceBtn.classList.add("bg-blue-100","text-slate-900","mic-listening"); });
+        rec.addEventListener("end",    () => { listening = false; voiceBtn.classList.remove("bg-blue-100","text-slate-900","mic-listening"); });
+        rec.addEventListener("error",  () => { listening = false; voiceBtn.classList.remove("bg-blue-100","text-slate-900","mic-listening"); });
+        rec.addEventListener("result", ev => {
+            let t = "";
+            for (let i = ev.resultIndex; i < ev.results.length; i++) if (ev.results[i].isFinal) t += ev.results[i][0].transcript;
+            if (t.trim()) { goalsInput.value = (goalsInput.value.trim() ? goalsInput.value.trim() + ' ' : '') + t.trim(); updateInputState(); }
         });
-        recognition.addEventListener("end",   () => { isListening = false; voiceBtn.classList.remove("bg-blue-100","text-slate-900","border-blue-200","mic-listening"); });
-        recognition.addEventListener("error", () => { isListening = false; voiceBtn.classList.remove("bg-blue-100","text-slate-900","border-blue-200","mic-listening"); });
-        voiceBtn.addEventListener("click", () => { if (!recognition) return; isListening ? recognition.stop() : recognition.start(); });
+        voiceBtn.addEventListener("click", () => listening ? rec.stop() : rec.start());
     }
 
-    document.querySelectorAll(".preset-chip").forEach(chip => {
-        chip.addEventListener("click", () => {
-            const text = chip.getAttribute("data-text");
-            const current = goalsInput.value.trim();
-            goalsInput.value = current ? `${current}, ${text}` : text;
-            updateInputState(); goalsInput.focus();
-        });
+    // ── Preset chips ────────────────────────────────────────────────────────────
+
+    document.querySelectorAll(".preset-chip").forEach(chip => chip.addEventListener("click", () => {
+        const cur = goalsInput.value.trim();
+        goalsInput.value = cur ? `${cur}, ${chip.dataset.text}` : chip.dataset.text;
+        updateInputState(); goalsInput.focus();
+    }));
+
+    // ── Tabs (set up once) ──────────────────────────────────────────────────────
+
+    const rankingsTab    = document.getElementById('rankingsTab');
+    const favoritesTab   = document.getElementById('favoritesTab');
+    const resultContent  = document.getElementById('resultContent');
+    const favContent     = document.getElementById('favoritesContent');
+
+    rankingsTab.addEventListener('click', () => {
+        resultContent.classList.remove('hidden'); favContent.classList.add('hidden');
+        rankingsTab.classList.add('bg-blue-600','text-white'); rankingsTab.classList.remove('bg-slate-700','text-slate-300');
+        favoritesTab.classList.remove('bg-blue-600','text-white'); favoritesTab.classList.add('bg-slate-700','text-slate-300');
+    });
+    favoritesTab.addEventListener('click', () => {
+        favContent.innerHTML = renderFavorites(window.currentAllEvents || []);
+        favContent.classList.remove('hidden'); resultContent.classList.add('hidden');
+        favoritesTab.classList.add('bg-blue-600','text-white'); favoritesTab.classList.remove('bg-slate-700','text-slate-300');
+        rankingsTab.classList.remove('bg-blue-600','text-white'); rankingsTab.classList.add('bg-slate-700','text-slate-300');
+        attachSaveListeners();
     });
 
-    function showLoading(show) { document.getElementById("loading").classList.toggle("hidden", !show); }
-    function showError(msg) {
-        const el = document.getElementById("error");
-        if (msg) { el.textContent = msg; el.classList.remove("hidden"); }
-        else      { el.classList.add("hidden"); }
-    }
+    // ── Sort ────────────────────────────────────────────────────────────────────
+
+    document.getElementById("sortBy").addEventListener("change", function () {
+        if (!window.currentRankedEvents) return;
+        let sorted = [...window.currentRankedEvents];
+        if (this.value === "score") sorted.sort((a,b) => parseInt(b.score) - parseInt(a.score));
+        else if (this.value === "date") sorted.sort((a,b) => {
+            const aD = (window.currentAllEvents||[]).find(e=>e.name===a.name)?.start||"";
+            const bD = (window.currentAllEvents||[]).find(e=>e.name===b.name)?.start||"";
+            return aD.localeCompare(bD);
+        });
+        resultContent.innerHTML = renderCards(sorted);
+        attachSaveListeners(); attachCalendarListeners();
+    });
+
+    // ── New search button ───────────────────────────────────────────────────────
+
+    document.getElementById("newSearchBtn").addEventListener("click", () => {
+        document.getElementById("result").classList.add("hidden");
+        goalsInput.value = ""; updateInputState(); goalsInput.focus();
+    });
+
+    // ── Form submit ─────────────────────────────────────────────────────────────
 
     document.getElementById("goalForm").addEventListener("submit", async e => {
         e.preventDefault();
@@ -521,149 +541,53 @@
         const dateFilter  = document.getElementById("dateFilter").value;
         const priceFilter = document.getElementById("priceFilter").value;
         if (!goals) { showError("Please enter what you're looking for"); return; }
+
         showLoading(true); showError("");
+        document.getElementById("result").classList.add("hidden");
         submitBtn.disabled = true; submitBtn.classList.add("opacity-70","cursor-not-allowed"); submitBtn.textContent = "Finding...";
 
         try {
-            const response = await fetch("/api/optimize", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ goals, dateFilter, priceFilter })
-            });
-            const data = await response.json();
-            if (!response.ok) {
+            const res  = await fetch("/api/optimize", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({goals, dateFilter, priceFilter}) });
+            const data = await res.json();
+
+            if (!res.ok) {
                 showError(data.error || "Something went wrong");
-                showLoading(false); submitBtn.disabled = false; submitBtn.classList.remove("opacity-70","cursor-not-allowed"); submitBtn.textContent = defaultSubmitText;
+                showLoading(false); submitBtn.disabled = false; submitBtn.classList.remove("opacity-70","cursor-not-allowed"); submitBtn.textContent = defaultLabel;
                 return;
             }
 
-            const rankedEvents = parseResults(data.ranking);
-            const allEvents    = data.events || [];
-            const savedEvents  = JSON.parse(localStorage.getItem('savedEvents') || '{}');
-            window.currentRankedEvents = rankedEvents;
-            window.currentAllEvents    = allEvents;
+            const ranked = parseResults(data.ranking);
+            window.currentRankedEvents = ranked;
+            window.currentAllEvents    = data.events || [];
 
-            document.getElementById("resultContent").innerHTML = renderCards(rankedEvents);
-            document.getElementById("resultCount").textContent  = `Found ${rankedEvents.length} events`;
+            // Search context
+            const dateLabel = { today:'Today', 'this-week':'This Week', 'next-week':'Next Week' }[dateFilter] || dateFilter;
+            document.getElementById("searchContextText").textContent = `"${goals}" · ${dateLabel}`;
 
-            document.getElementById("infoBadge").textContent = data.is_live ? `Live events (${data.event_count} found)` : `Sample events — add API keys for live results`;
-            const resultEl = document.getElementById("result");
-            resultEl.classList.remove("hidden"); resultEl.classList.add("slide-in");
-            attachSaveListeners(); attachCalendarListeners(); showLoading(false);
-            submitBtn.disabled = false; submitBtn.classList.remove("opacity-70","cursor-not-allowed"); submitBtn.textContent = "Done";
-            setTimeout(() => { submitBtn.textContent = defaultSubmitText; }, 800);
-            setupTabs(data.events);
-        } catch (error) {
-            showError("Error: " + error.message);
-            showLoading(false); submitBtn.disabled = false; submitBtn.classList.remove("opacity-70","cursor-not-allowed"); submitBtn.textContent = defaultSubmitText;
-        }
-    });
+            resultContent.innerHTML = renderCards(ranked);
+            document.getElementById("resultCount").textContent = `Found ${ranked.length} events`;
+            document.getElementById("infoBadge").textContent   = data.is_live ? `Live · ${data.event_count} events found` : `Sample events`;
 
-    function setupTabs(allEvents) {
-        const rankingsTab    = document.getElementById('rankingsTab');
-        const favoritesTab   = document.getElementById('favoritesTab');
-        const resultContent  = document.getElementById('resultContent');
-        const favoritesContent = document.getElementById('favoritesContent');
-        rankingsTab.addEventListener('click', () => {
-            resultContent.classList.remove('hidden'); favoritesContent.classList.add('hidden');
+            showLoading(false);
+            document.getElementById("result").classList.remove("hidden");
+            document.getElementById("result").classList.add("slide-in");
+            attachSaveListeners(); attachCalendarListeners();
+            updateFavoriteCount();
+
+            // Reset to rankings tab
+            resultContent.classList.remove('hidden'); favContent.classList.add('hidden');
             rankingsTab.classList.add('bg-blue-600','text-white'); rankingsTab.classList.remove('bg-slate-700','text-slate-300');
             favoritesTab.classList.remove('bg-blue-600','text-white'); favoritesTab.classList.add('bg-slate-700','text-slate-300');
-        });
-        favoritesTab.addEventListener('click', () => {
-            const saved = JSON.parse(localStorage.getItem('savedEvents') || '{}');
-            const favoriteEvents = allEvents.filter(e => saved[e.name]);
-            if (favoriteEvents.length === 0) {
-                favoritesContent.innerHTML = '<p class="text-slate-400 text-center py-8">No favorites yet. Click the star to save events.</p>';
-            } else {
-                favoritesContent.innerHTML = favoriteEvents.map((event, index) => `
-                    <div class="bg-slate-800/45 border border-slate-600/80 rounded-xl p-4 hover:bg-slate-800/70 transition">
-                        <div class="flex gap-4">
-                            <div class="text-xl font-semibold text-slate-300 flex-shrink-0 w-7">${index + 1}</div>
-                            <div class="flex-1">
-                                <div class="flex justify-between items-start gap-2 mb-2">
-                                    <h3 class="font-medium text-slate-100 text-[15px]">${escapeHtml(event.name)}</h3>
-                                    <button class="save-btn text-xl flex-shrink-0 transition text-yellow-400" data-event-id="${escapeHtml(event.name)}" title="Remove from favorites">★</button>
-                                </div>
-                                <div class="flex items-center gap-3 flex-wrap text-xs text-slate-400">
-                                    <span>${escapeHtml(event.venue||'')}</span>
-                                    <span>${escapeHtml(event.start||'')}</span>
-                                    <span class="${event.is_free ? 'text-emerald-400' : 'text-amber-400'}">${event.is_free ? 'FREE' : 'PAID'}</span>
-                                    ${event.url ? `<a href="${event.url}" target="_blank" class="text-blue-400 hover:text-blue-300">Register →</a>` : ''}
-                                </div>
-                            </div>
-                        </div>
-                    </div>`).join('');
-            }
-            favoritesContent.classList.remove('hidden'); resultContent.classList.add('hidden');
-            favoritesTab.classList.add('bg-blue-600','text-white'); favoritesTab.classList.remove('bg-slate-700','text-slate-300');
-            rankingsTab.classList.remove('bg-blue-600','text-white'); rankingsTab.classList.add('bg-slate-700','text-slate-300');
-            attachSaveListeners();
-        });
-    }
 
-    // Calendar integration
-    function isMobile() {
-        return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    }
+            // Success feedback
+            submitBtn.textContent = `✓ ${ranked.length} matches`;
+            submitBtn.disabled = false; submitBtn.classList.remove("opacity-70","cursor-not-allowed");
+            setTimeout(() => { submitBtn.textContent = defaultLabel; }, 1500);
 
-    function buildCalendarLinks(name, time, venue) {
-        const date = time ? time.split(' ')[0].replace(/-/g, '') : new Date().toISOString().split('T')[0].replace(/-/g, '');
-        const hour = time && time.includes(':') ? time.split(' ')[1]?.replace(':', '') || '1800' : '1800';
-        const startDT = `${date}T${hour}00`;
-        const endHour = String(parseInt(hour.slice(0,2)) + 1).padStart(2,'0') + hour.slice(2);
-        const endDT   = `${date}T${endHour}00`;
-
-        const google  = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(name)}&dates=${date}T${hour}00Z/${date}T${endHour}00Z&location=${encodeURIComponent(venue)}`;
-        const outlook = `https://outlook.live.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(name)}&startdt=${startDT}&enddt=${endDT}&location=${encodeURIComponent(venue)}`;
-        const ics = `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nSUMMARY:${name}\nDTSTART:${date}T${hour}00Z\nDTEND:${date}T${endHour}00Z\nLOCATION:${venue}\nEND:VEVENT\nEND:VCALENDAR`;
-
-        return { google, outlook, ics };
-    }
-
-    function attachCalendarListeners() {
-        document.querySelectorAll('.calendar-btn').forEach(btn => {
-            btn.replaceWith(btn.cloneNode(true)); // remove old listeners
-        });
-        document.querySelectorAll('.calendar-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const name  = btn.getAttribute('data-name');
-                const time  = btn.getAttribute('data-time');
-                const venue = btn.getAttribute('data-venue');
-                const links = buildCalendarLinks(name, time, venue);
-
-                if (isMobile()) {
-                    window.open(links.google, '_blank');
-                    return;
-                }
-
-                // Remove existing popover
-                document.querySelector('.cal-popover')?.remove();
-
-                const pop = document.createElement('div');
-                pop.className = 'cal-popover fixed z-50 bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-2 min-w-[160px]';
-                pop.style.cssText = `top:${btn.getBoundingClientRect().bottom + 6}px;left:${btn.getBoundingClientRect().left}px`;
-                pop.innerHTML = `
-                    <a href="${links.google}" target="_blank" class="block px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded transition">Google Calendar</a>
-                    <a href="${links.outlook}" target="_blank" class="block px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded transition">Outlook</a>
-                    <button class="ics-dl w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded transition">Apple / ICS download</button>
-                `;
-                document.body.appendChild(pop);
-
-                pop.querySelector('.ics-dl').addEventListener('click', () => {
-                    const blob = new Blob([links.ics], { type: 'text/calendar' });
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob);
-                    a.download = `${name}.ics`;
-                    a.click();
-                    pop.remove();
-                });
-
-                setTimeout(() => {
-                    document.addEventListener('click', () => pop.remove(), { once: true });
-                }, 50);
-            });
-        });
-    }
+        } catch (err) {
+            showError("Error: " + err.message);
+            showLoading(false); submitBtn.disabled = false; submitBtn.classList.remove("opacity-70","cursor-not-allowed"); submitBtn.textContent = defaultLabel;
+        }
+    });
 </script>
 {% endblock %}
