@@ -771,5 +771,37 @@ def optimize():
         return jsonify({"error": str(e)}), 500
 
 
+def _warm_cache():
+    """Fetch all sources in parallel and populate the cache."""
+    sources = [
+        fetch_ticketmaster_events,
+        fetch_meetup_events,
+        fetch_eventbrite_events,
+        fetch_luma_events,
+        fetch_techweek_events,
+        fetch_nyc_opendata_events,
+    ]
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        futures = [executor.submit(fn) for fn in sources]
+        for f in as_completed(futures):
+            try:
+                f.result(timeout=40)
+            except Exception:
+                pass
+
+
+def _cache_refresh_loop():
+    """Warm cache on startup, then refresh every 55 minutes."""
+    _warm_cache()
+    while True:
+        time.sleep(55 * 60)
+        _warm_cache()
+
+
+# Start background cache warming thread
+_bg_thread = threading.Thread(target=_cache_refresh_loop, daemon=True)
+_bg_thread.start()
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, debug=True)
