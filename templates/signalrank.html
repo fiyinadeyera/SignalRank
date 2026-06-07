@@ -24,17 +24,61 @@
     }
     .slide-in { animation: slideIn 0.4s ease; }
     .fade-in  { animation: slideIn 0.25s ease; }
-    #tipBoxes {
-        opacity: 1;
-        max-height: 200px;
-        overflow: hidden;
-        transition: opacity 0.6s ease, max-height 0.6s ease, margin 0.6s ease;
-    }
-    #tipBoxes.fading {
+    /* Product tour */
+    #tourBackdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(2, 6, 23, 0.6);
+        z-index: 40;
         opacity: 0;
-        max-height: 0;
-        margin-bottom: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
     }
+    #tourBackdrop.visible {
+        opacity: 1;
+        pointer-events: all;
+    }
+    #tourCallout {
+        position: fixed;
+        z-index: 50;
+        width: 260px;
+        opacity: 0;
+        transform: translateY(6px);
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        pointer-events: none;
+    }
+    #tourCallout.visible {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: all;
+    }
+    .tour-arrow-up::before {
+        content: '';
+        position: absolute;
+        top: -6px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-left: 7px solid transparent;
+        border-right: 7px solid transparent;
+        border-bottom: 7px solid rgb(51 65 85);
+    }
+    .tour-arrow-down::after {
+        content: '';
+        position: absolute;
+        bottom: -6px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-left: 7px solid transparent;
+        border-right: 7px solid transparent;
+        border-top: 7px solid rgb(51 65 85);
+    }
+    .tour-dot {
+        width: 5px; height: 5px;
+        border-radius: 50%;
+        background: rgb(71 85 105);
+        transition: background 0.2s;
+    }
+    .tour-dot.active { background: rgb(148 163 184); }
 </style>
 {% endblock %}
 
@@ -53,21 +97,14 @@
             <p class="text-sm text-slate-400">Local events, ranked for you</p>
         </div>
 
-        <!-- Tip boxes: first visit only, auto-fades after 6s -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 transition-all duration-700" id="tipBoxes" style="display:none;">
-            <div class="flex items-start gap-3 bg-slate-900/50 border border-slate-800 rounded-xl px-4 py-3">
-                <span class="text-base mt-0.5">💬</span>
-                <div>
-                    <p class="text-xs font-semibold text-slate-200 mb-0.5">Describe your goal</p>
-                    <p class="text-xs text-slate-500 leading-relaxed">Type what you want to get out of an event. The AI ranks results against your goal.</p>
-                </div>
-            </div>
-            <div class="flex items-start gap-3 bg-slate-900/50 border border-slate-800 rounded-xl px-4 py-3">
-                <span class="text-base mt-0.5">⚡</span>
-                <div>
-                    <p class="text-xs font-semibold text-slate-200 mb-0.5">Quick picks and filters</p>
-                    <p class="text-xs text-slate-500 leading-relaxed">Tap a chip to fill your goal instantly. Set date and budget to narrow results.</p>
-                </div>
+        <!-- Product tour: first visit only -->
+        <div id="tourBackdrop"></div>
+        <div id="tourCallout" class="bg-slate-800 border border-slate-600 rounded-xl shadow-2xl p-4">
+            <p id="tourTitle" class="text-sm font-semibold text-white mb-1"></p>
+            <p id="tourText" class="text-xs text-slate-400 leading-relaxed"></p>
+            <div class="flex items-center justify-between mt-3">
+                <div class="flex gap-1.5" id="tourDots"></div>
+                <button id="tourSkip" class="text-[11px] text-slate-500 hover:text-slate-300 transition">Skip</button>
             </div>
         </div>
 
@@ -78,9 +115,8 @@
                         <div class="flex flex-col gap-2 mb-3 md:flex-row md:items-center md:justify-between">
                             <label for="goals" class="block text-sm font-semibold text-slate-100">Describe your goal</label>
                             <div class="flex flex-wrap gap-1.5 justify-start md:justify-end" id="goalPresets">
-                                <button type="button" class="preset-chip px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-800 border border-slate-600 text-slate-300 hover:bg-slate-700 transition" data-text="networking events">Networking</button>
-                                <button type="button" class="preset-chip px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-800 border border-slate-600 text-slate-300 hover:bg-slate-700 transition" data-text="comedy shows">Comedy</button>
-                                <button type="button" class="preset-chip px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-800 border border-slate-600 text-slate-300 hover:bg-slate-700 transition" data-text="product launches">Product</button>
+                                <button type="button" class="preset-chip px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-800 border border-slate-600 text-slate-300 hover:bg-slate-700 transition" data-text="networking events for professionals">Networking</button>
+                                <button type="button" class="preset-chip px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-800 border border-slate-600 text-slate-300 hover:bg-slate-700 transition" data-text="events to practice hobbies and meet people with similar interests">Hobbies</button>
                             </div>
                         </div>
                         <div class="relative">
@@ -158,25 +194,128 @@
 
 {% block scripts %}
 <script>
-    // First-visit tip boxes: show once, fade out after 6s, never again
-    (function() {
-        const tipBoxes = document.getElementById('tipBoxes');
-        if (!tipBoxes) return;
+    // Product tour — first visit only
+    (function () {
+        if (localStorage.getItem('sr_tips_seen')) return;
 
-        if (!localStorage.getItem('sr_tips_seen')) {
-            // First visit: show the boxes
-            tipBoxes.style.display = '';
+        const steps = [
+            {
+                target: '#goals',
+                title: 'Tell it what you want',
+                text: 'Type your goal in plain English. The AI reads it and ranks every event against it.',
+                arrow: 'up'
+            },
+            {
+                target: '#goalPresets',
+                title: 'Or tap a quick pick',
+                text: 'Networking, Comedy, Product — tap any chip to fill your goal instantly.',
+                arrow: 'up'
+            },
+            {
+                target: '.filter-btn',
+                title: 'Set your time window',
+                text: 'Pick today, this week, or next week. Then hit Find Events.',
+                arrow: 'down'
+            }
+        ];
 
-            // After 6s, fade them out
-            setTimeout(() => {
-                tipBoxes.classList.add('fading');
-                // After fade completes, remove from layout entirely and mark seen
-                setTimeout(() => {
-                    tipBoxes.remove();
-                    localStorage.setItem('sr_tips_seen', '1');
-                }, 650);
-            }, 6000);
+        const backdrop  = document.getElementById('tourBackdrop');
+        const callout   = document.getElementById('tourCallout');
+        const titleEl   = document.getElementById('tourTitle');
+        const textEl    = document.getElementById('tourText');
+        const dotsEl    = document.getElementById('tourDots');
+        const skipBtn   = document.getElementById('tourSkip');
+
+        let current = 0;
+        let timer   = null;
+
+        // Build dots
+        steps.forEach((_, i) => {
+            const d = document.createElement('div');
+            d.className = 'tour-dot' + (i === 0 ? ' active' : '');
+            dotsEl.appendChild(d);
+        });
+
+        function position(step) {
+            const target = document.querySelector(step.target);
+            if (!target) return;
+
+            const rect = target.getBoundingClientRect();
+            const cW   = 260;
+            const gap  = 14;
+
+            // Horizontal: centre on target, clamp to viewport
+            let left = rect.left + rect.width / 2 - cW / 2;
+            left = Math.max(12, Math.min(left, window.innerWidth - cW - 12));
+            callout.style.left = left + 'px';
+
+            // Vertical: above or below
+            if (step.arrow === 'up') {
+                callout.style.top  = (rect.bottom + window.scrollY + gap) + 'px';
+                callout.classList.add('tour-arrow-up');
+                callout.classList.remove('tour-arrow-down');
+            } else {
+                callout.style.top  = (rect.top + window.scrollY - gap - 120) + 'px';
+                callout.classList.add('tour-arrow-down');
+                callout.classList.remove('tour-arrow-up');
+            }
+
+            // Nudge arrow to point at target
+            const arrowOffset = (rect.left + rect.width / 2) - left;
+            callout.style.setProperty('--arrow-left', Math.max(20, Math.min(arrowOffset, cW - 20)) + 'px');
         }
+
+        function show(index) {
+            const step = steps[index];
+
+            // Hide then reposition (avoids flash)
+            callout.classList.remove('visible');
+            setTimeout(() => {
+                titleEl.textContent = step.title;
+                textEl.textContent  = step.text;
+
+                // Update dots
+                dotsEl.querySelectorAll('.tour-dot').forEach((d, i) => {
+                    d.classList.toggle('active', i === index);
+                });
+
+                position(step);
+                callout.classList.add('visible');
+            }, 200);
+
+            // Auto-advance after 3.5s
+            clearTimeout(timer);
+            timer = setTimeout(advance, 3500);
+        }
+
+        function advance() {
+            current++;
+            if (current < steps.length) {
+                show(current);
+            } else {
+                dismiss();
+            }
+        }
+
+        function dismiss() {
+            clearTimeout(timer);
+            backdrop.classList.remove('visible');
+            callout.classList.remove('visible');
+            setTimeout(() => {
+                backdrop.remove();
+                callout.remove();
+            }, 350);
+            localStorage.setItem('sr_tips_seen', '1');
+        }
+
+        skipBtn.addEventListener('click', dismiss);
+        backdrop.addEventListener('click', dismiss);
+
+        // Kick off after a short delay so layout is ready
+        setTimeout(() => {
+            backdrop.classList.add('visible');
+            show(0);
+        }, 600);
     })();
 
     function escapeHtml(text) {
