@@ -133,7 +133,6 @@
                         Find Events
                     </button>
 
-                    <input type="hidden" id="priceFilter" value="all">
                     <div>
                         <label class="block text-xs text-slate-400 mb-1.5">Time Range</label>
                         <div class="grid grid-cols-3 gap-2">
@@ -281,25 +280,13 @@
 
     // ── Parse Claude's ranked response ─────────────────────────────────────────
 
-    function parseResults(text) {
-        const events = [];
-        let current = null, skip = true;
-        for (const line of text.split('\n').map(l => l.trim()).filter(Boolean)) {
-            if (line.startsWith('Score:')) {
-                if (current) {
-                    const m = line.match(/Score:\s*(\d+)\/10\s*\|\s*(FREE|PAID)/i);
-                    if (m) { current.score = m[1] + '/10'; current.isPaid = m[2].toUpperCase() === 'PAID'; events.push(current); skip = false; }
-                }
-                current = null;
-            } else if (skip && !line.match(/^[A-Z]/)) {
-                continue;
-            } else if (line.startsWith('REASON:')) {
-                if (current) current.reason = line.replace('REASON:', '').trim();
-            } else if (!current) {
-                current = { name: line, reason: '', score: '?/10', isPaid: false };
-            }
-        }
-        return events.slice(0, 6);
+    function parseResults(ranking) {
+        if (!Array.isArray(ranking)) return [];
+        return ranking.slice(0, 6).map(e => ({
+            name: e.name || '',
+            reason: e.reason || '',
+            score: `${e.score}/10`,
+        }));
     }
 
     // ── Render event cards ──────────────────────────────────────────────────────
@@ -539,7 +526,6 @@
         e.preventDefault();
         const goals       = goalsInput.value.trim();
         const dateFilter  = document.getElementById("dateFilter").value;
-        const priceFilter = document.getElementById("priceFilter").value;
         if (!goals) { showError("Please enter what you're looking for"); return; }
 
         showLoading(true); showError("");
@@ -547,7 +533,7 @@
         submitBtn.disabled = true; submitBtn.classList.add("opacity-70","cursor-not-allowed"); submitBtn.textContent = "Finding...";
 
         try {
-            const res  = await fetch("/api/optimize", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({goals, dateFilter, priceFilter}) });
+            const res  = await fetch("/api/optimize", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({goals, dateFilter}) });
             const data = await res.json();
 
             if (!res.ok) {

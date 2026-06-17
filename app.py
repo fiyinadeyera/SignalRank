@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 import os
+import json
 import hmac
 import hashlib
 import subprocess
@@ -575,13 +576,11 @@ def rank_events(events, user_goals):
 Available events ({len(events)} total):
 {events_text}
 
-Output ONLY the ranked events — no intro text, no commentary, no numbers. Use this exact format for every event:
+Output ONLY a JSON array, no intro text, no commentary, no markdown code fences. Use this exact structure:
 
-EVENT NAME
-REASON: One sentence explaining why this matches their goals.
-Score: X/10 | FREE or PAID
+[{{"name": "EVENT NAME", "reason": "One sentence explaining why this matches their goals.", "score": 8}}]
 
-Repeat the block for all {n} events."""
+The "score" field must be an integer from 1 to 10. Include all {n} events in the array."""
 
     message = client.messages.create(
         model="claude-sonnet-4-6",
@@ -589,7 +588,16 @@ Repeat the block for all {n} events."""
         messages=[{"role": "user", "content": prompt}]
     )
 
-    return message.content[0].text
+    text = message.content[0].text.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1] if "\n" in text else text
+        if text.endswith("```"):
+            text = text.rsplit("```", 1)[0]
+        text = text.strip()
+        if text.startswith("json"):
+            text = text[4:].strip()
+
+    return json.loads(text)
 
 
 WEBHOOK_SECRET = os.environ.get("GITHUB_WEBHOOK_SECRET", "")
@@ -705,21 +713,11 @@ def filter_events_by_date(events, start_date, end_date):
     return filtered
 
 
-def filter_events_by_price(events, price_filter):
-    """Filter events by price preference."""
-    if price_filter == "free":
-        return [event for event in events if event.get("is_free") is True]
-    if price_filter == "paid":
-        return [event for event in events if event.get("is_free") is False]
-    return events
-
-
 @app.route("/api/optimize", methods=["POST"])
 def optimize():
     data = request.json
     goals = data.get("goals", "")
     date_filter = data.get("dateFilter", "this-week")
-    price_filter = data.get("priceFilter", "free")
 
     if not goals:
         return jsonify({"error": "Please enter your goals"}), 400
@@ -751,7 +749,6 @@ def optimize():
         # Only filter live events — samples are always shown as-is
         start_date, end_date = get_date_range(date_filter)
         all_events = filter_events_by_date(all_events, start_date, end_date)
-        all_events = filter_events_by_price(all_events, price_filter)
 
         if not all_events:
             # Live events existed but all filtered out — fall back to samples
