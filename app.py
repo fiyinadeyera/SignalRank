@@ -8,57 +8,8 @@ from dotenv import dotenv_values
 from datetime import datetime, timedelta
 import requests
 import anthropic
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.service import Service
+import re
 import time
-
-import shutil
-
-# Replit Nix paths — only used if they actually exist
-_REPLIT_CHROMEDRIVER = "/nix/store/8zj50jw4w0hby47167kqqsaqw4mm5bkd-chromedriver-unwrapped-138.0.7204.100/bin/chromedriver"
-_REPLIT_CHROMIUM    = "/nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium"
-
-
-def _find_binary(candidates):
-    """Return the first path that exists on disk, or None."""
-    for p in candidates:
-        if p and os.path.isfile(p):
-            return p
-    return None
-
-
-def get_chrome_driver():
-    chromium_path = _find_binary([
-        _REPLIT_CHROMIUM,
-        shutil.which("chromium-browser"),
-        shutil.which("chromium"),
-        shutil.which("google-chrome"),
-        shutil.which("google-chrome-stable"),
-        "/usr/bin/chromium-browser",
-        "/usr/bin/chromium",
-        "/usr/bin/google-chrome",
-    ])
-    chromedriver_path = _find_binary([
-        _REPLIT_CHROMEDRIVER,
-        shutil.which("chromedriver"),
-        "/usr/bin/chromedriver",
-        "/usr/local/bin/chromedriver",
-    ])
-
-    if not chromium_path or not chromedriver_path:
-        raise RuntimeError("Chrome/Chromium not available in this environment")
-
-    options = webdriver.ChromeOptions()
-    options.binary_location = chromium_path
-    options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--disable-gpu')
-    options.add_argument('user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36')
-    return webdriver.Chrome(service=Service(chromedriver_path), options=options)
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -82,6 +33,140 @@ def _get_cached(source_name):
 def _set_cache(source_name, data):
     key = _get_cache_key(source_name)
     _cache[key] = (data, time.time())
+
+# Per-source health, exposed at /api/status for debugging
+_source_status = {}
+
+def _record_status(name, count=None, error=None):
+    _source_status[name] = {
+        "ok": error is None,
+        "count": count,
+        "error": error,
+        "checked_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+
+def _source(name):
+    """Wrap a fetcher with caching and status recording; errors return []."""
+    def deco(fn):
+        def wrapper():
+            cached = _get_cached(name)
+            if cached is not None:
+                return cached
+            try:
+                result = fn()
+                if result:
+                    _set_cache(name, result)
+                _record_status(name, count=len(result))
+                return result
+            except Exception as e:
+                _record_status(name, error=f"{type(e).__name__}: {e}")
+                return []
+        return wrapper
+    return deco
+
+
+_HTTP_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
+def _http_get(url, params=None, timeout=10):
+    r = requests.get(url, params=params, headers=_HTTP_HEADERS, timeout=timeout)
+    r.raise_for_status()
+    return r.text
+
+
+def _extract_json_blocks(html):
+    """Parse JSON embedded in ld+json and __NEXT_DATA__ script tags."""
+    patterns = [
+        r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>',
+        r'<script[^>]*id="__NEXT_DATA__"[^>]*>(.*?)</script>',
+    ]
+    blocks = []
+    for pat in patterns:
+        for m in re.finditer(pat, html, re.DOTALL):
+            try:
+                blocks.append(json.loads(m.group(1)))
+            except ValueError:
+                continue
+    return blocks
+
+
+def _walk_event_dicts(node, found):
+    """Recursively collect dicts that carry a name plus a start time."""
+    if isinstance(node, dict):
+        name = node.get("name") or node.get("title")
+        start = node.get("startDate") or node.get("start_at") or node.get("dateTime")
+        if isinstance(name, str) and isinstance(start, str) and len(name.strip()) > 3:
+            found.append((node, name.strip(), start))
+        for v in node.values():
+            _walk_event_dicts(v, found)
+    elif isinstance(node, list):
+        for v in node:
+            _walk_event_dicts(v, found)
+
+
+def _normalize_start(raw):
+    try:
+        dt = datetime.fromisoformat(raw.strip().replace("Z", "+00:00"))
+        return dt.strftime("%Y-%m-%d %H:%M")
+    except ValueError:
+        return None
+
+
+def _looks_free(node):
+    offers = node.get("offers")
+    if isinstance(offers, dict):
+        offers = [offers]
+    if isinstance(offers, list):
+        for o in offers:
+            if isinstance(o, dict):
+                price = o.get("price") or o.get("lowPrice")
+                if price in (0, "0", "0.00", "0.0"):
+                    return True
+                if price:
+                    return False
+    return node.get("price") in (None, 0, "0")
+
+
+def _fetch_events_from_page(url, description, base_url="", default_venue="New York", limit=10):
+    """Fetch a page and pull events out of its embedded structured data."""
+    html = _http_get(url)
+    found = []
+    for block in _extract_json_blocks(html):
+        _walk_event_dicts(block, found)
+
+    events, seen = [], set()
+    for node, name, start_raw in found:
+        if name in seen:
+            continue
+        start = _normalize_start(start_raw)
+        if not start:
+            continue
+        seen.add(name)
+
+        ev_url = node.get("url") or node.get("eventUrl") or ""
+        if ev_url and not ev_url.startswith("http"):
+            ev_url = base_url.rstrip("/") + "/" + ev_url.lstrip("/")
+
+        venue = default_venue
+        loc = node.get("location")
+        if isinstance(loc, dict) and loc.get("name"):
+            venue = loc["name"]
+        elif isinstance(loc, str) and loc.strip():
+            venue = loc.strip()
+
+        events.append({
+            "name": name[:100],
+            "description": (node.get("description") or description)[:300],
+            "start": start,
+            "venue": venue[:100],
+            "is_free": _looks_free(node),
+            "url": ev_url,
+        })
+        if len(events) >= limit:
+            break
+    return events
 
 _env = dotenv_values(os.path.join(os.path.dirname(__file__), ".env"))
 MEETUP_KEY = os.environ.get("MEETUP_API_KEY") or _env.get("MEETUP_API_KEY")
@@ -169,397 +254,132 @@ def _build_sample_events():
     ]
 
 
+@_source("meetup")
 def fetch_meetup_events():
-    """Scrape Meetup.com for NYC events"""
-    # Check cache first
-    cached = _get_cached("meetup")
-    if cached is not None:
-        return cached
-
-    try:
-        driver = get_chrome_driver()
-
-        driver.get("https://www.meetup.com/en-US/find/?location=New+York&keywords=tech")
-        time.sleep(4)
-
-        events = []
-        seen_names = set()
-
-        try:
-            # Wait for event results to load
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_all_elements_located((By.XPATH, "//a[contains(@href, '/events/')]"))
-            )
-
-            # Look for event links
-            all_links = driver.find_elements(By.XPATH, "//a[contains(@href, '/events/')]")
-
-            for link in all_links[:20]:
-                try:
-                    href = link.get_attribute("href")
-                    text = link.text.strip()
-
-                    if text and len(text) > 3 and text not in seen_names and href:
-                        seen_names.add(text)
-                        events.append({
-                            "name": text[:100],
-                            "description": "Tech meetup event on Meetup.com",
-                            "start": (datetime.now() + timedelta(days=3)).strftime("%Y-%m-%d 18:30"),
-                            "venue": "New York",
-                            "is_free": True,
-                            "url": href if href.startswith("http") else f"https://www.meetup.com{href}",
-                        })
-                except:
-                    continue
-
-        except:
-            pass
-
-        driver.quit()
-        result = events[:10]
-        _set_cache("meetup", result)
-        return result
-
-    except Exception as e:
-        return []
+    """Meetup NYC tech events via structured data embedded in the search page."""
+    return _fetch_events_from_page(
+        "https://www.meetup.com/find/?location=us--ny--new%20york&source=EVENTS&keywords=tech",
+        description="Tech meetup event on Meetup.com",
+        base_url="https://www.meetup.com",
+    )
 
 
+@_source("ticketmaster")
 def fetch_ticketmaster_events():
-    # Check cache first
-    cached = _get_cached("ticketmaster")
-    if cached is not None:
-        return cached
-
     if not TICKETMASTER_KEY or TICKETMASTER_KEY == "your_key_here":
-        return []
+        raise RuntimeError("TICKETMASTER_API_KEY not set")
 
-    try:
-        start = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
-        end = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    start = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    end = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        r = requests.get(
-            "https://app.ticketmaster.com/discovery/v2/events.json",
-            params={
-                "apikey": TICKETMASTER_KEY,
-                "city": "New York",
-                "countryCode": "US",
-                "startDateTime": start,
-                "endDateTime": end,
-                "size": 50,
-            },
-            timeout=5
-        )
+    r = requests.get(
+        "https://app.ticketmaster.com/discovery/v2/events.json",
+        params={
+            "apikey": TICKETMASTER_KEY,
+            "city": "New York",
+            "countryCode": "US",
+            "startDateTime": start,
+            "endDateTime": end,
+            "size": 50,
+        },
+        timeout=5
+    )
+    r.raise_for_status()
 
-        if r.status_code != 200:
-            return []
-
-        events = []
-        for e in r.json().get("_embedded", {}).get("events", []):
-            venue = e.get("_embedded", {}).get("venues", [{}])[0]
-            events.append({
-                "name": e.get("name", ""),
-                "description": e.get("info", "")[:300],
-                "start": e.get("dates", {}).get("start", {}).get("localDate", ""),
-                "venue": venue.get("name", "TBD"),
-                "is_free": False,
-                "url": e.get("url", ""),
-            })
-
-        _set_cache("ticketmaster", events)
-        return events
-    except Exception:
-        return []
+    events = []
+    for e in r.json().get("_embedded", {}).get("events", []):
+        venue = e.get("_embedded", {}).get("venues", [{}])[0]
+        events.append({
+            "name": e.get("name", ""),
+            "description": e.get("info", "")[:300],
+            "start": e.get("dates", {}).get("start", {}).get("localDate", ""),
+            "venue": venue.get("name", "TBD"),
+            "is_free": False,
+            "url": e.get("url", ""),
+        })
+    return events
 
 
+@_source("eventbrite")
 def fetch_eventbrite_events():
-    """Scrape Eventbrite for NYC events (Eventbrite API doesn't support public search)"""
-    # Check cache first
-    cached = _get_cached("eventbrite")
-    if cached is not None:
-        return cached
-
-    try:
-        driver = get_chrome_driver()
-
-        driver.get("https://www.eventbrite.com/d/ny--new-york/")
-        time.sleep(3)
-
-        events = []
-
-        try:
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "[data-testid='event-card']"))
-            )
-
-            event_cards = driver.find_elements(By.CSS_SELECTOR, "[data-testid='event-card']")
-
-            for card in event_cards[:15]:
-                try:
-                    # Get event link and name
-                    link = card.find_element(By.TAG_NAME, "a")
-                    url = link.get_attribute("href")
-                    name = link.get_attribute("aria-label") or link.text
-
-                    if name and url:
-                        events.append({
-                            "name": name[:100],
-                            "description": "Event from Eventbrite",
-                            "start": (datetime.now() + timedelta(days=2)).strftime("%Y-%m-%d 18:00"),
-                            "venue": "New York",
-                            "is_free": False,
-                            "url": url,
-                        })
-                except:
-                    continue
-
-        except:
-            pass
-
-        driver.quit()
-        result = events[:10]
-        _set_cache("eventbrite", result)
-        return result
-
-    except Exception:
-        return []
+    """Eventbrite NYC events via JSON-LD embedded in the destination page."""
+    return _fetch_events_from_page(
+        "https://www.eventbrite.com/d/ny--new-york/all-events/",
+        description="Event from Eventbrite",
+        base_url="https://www.eventbrite.com",
+    )
 
 
+@_source("luma")
 def fetch_luma_events():
-    """Scrape Luma.com for NYC tech events"""
-    # Check cache first
-    cached = _get_cached("luma")
-    if cached is not None:
-        return cached
-
-    try:
-        driver = get_chrome_driver()
-
-        # Try NYC events page
-        driver.get("https://lu.ma/new-york")
-        time.sleep(4)
-
-        events = []
-        seen_names = set()
-
-        try:
-            # Wait for content
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_all_elements_located((By.TAG_NAME, "div"))
-            )
-
-            # Look for event links with /event/ path
-            all_elements = driver.find_elements(By.XPATH, "//*[contains(@href, '/event/')]")
-
-            for elem in all_elements[:15]:
-                try:
-                    href = elem.get_attribute("href")
-                    # Try to get text from the element or nearby
-                    text = elem.text.strip()
-
-                    # Also try to get from aria-label or title
-                    if not text:
-                        text = elem.get_attribute("aria-label") or elem.get_attribute("title")
-
-                    # Clean up text
-                    text = (text or "").strip()
-
-                    if text and len(text) > 3 and text not in seen_names:
-                        seen_names.add(text)
-                        events.append({
-                            "name": text[:100],
-                            "description": "Tech community event on Luma",
-                            "start": (datetime.now() + timedelta(days=2)).strftime("%Y-%m-%d 19:00"),
-                            "venue": "New York",
-                            "is_free": True,
-                            "url": href if href.startswith("http") else f"https://lu.ma{href}",
-                        })
-                except:
-                    continue
-
-        except:
-            pass
-
-        driver.quit()
-        result = events[:10]
-        _set_cache("luma", result)
-        return result
-
-    except Exception as e:
-        return []
+    """Luma NYC events via structured data embedded in the city page."""
+    return _fetch_events_from_page(
+        "https://lu.ma/nyc",
+        description="Tech community event on Luma",
+        base_url="https://lu.ma",
+    )
 
 
+@_source("techweek")
 def fetch_techweek_events():
-    """Scrape tech-week.com for NYC Tech Week events"""
-    cached = _get_cached("techweek")
-    if cached is not None:
-        return cached
-
-    try:
-        options = webdriver.ChromeOptions()
-        options.add_argument('--headless')
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')
-        options.add_argument('--disable-gpu')
-        options.add_argument('user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36')
-        options.add_argument('--disable-blink-features=AutomationControlled')
-
-        driver = webdriver.Chrome(
-            service=Service(ChromeDriverManager().install()),
-            options=options
-        )
-
-        driver.get("https://www.tech-week.com/calendar/nyc")
-        time.sleep(5)
-
-        events = []
-
-        try:
-            # Wait for any content to load
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_all_elements_located((By.TAG_NAME, "body"))
-            )
-
-            # Try multiple parsing strategies
-            # Strategy 1: Look for table rows
-            event_rows = driver.find_elements(By.TAG_NAME, "tr")
-
-            if len(event_rows) > 0:
-                for row in event_rows:
-                    try:
-                        cells = row.find_elements(By.TAG_NAME, "td")
-                        if len(cells) >= 2:
-                            # Try to find link with event name
-                            all_links = row.find_elements(By.TAG_NAME, "a")
-                            if all_links:
-                                # Usually event name is in one of the first 2-3 links
-                                for link in all_links[:3]:
-                                    event_name = link.text.strip()
-                                    if event_name and len(event_name) > 3:
-                                        event_url = link.get_attribute("href")
-
-                                        # Extract cell text for metadata
-                                        cell_texts = [c.text.strip() for c in cells]
-                                        location = "New York"
-                                        time_str = ""
-
-                                        if cell_texts and cell_texts[0]:
-                                            time_str = cell_texts[0]
-                                        if len(cell_texts) > 2:
-                                            location = cell_texts[-1]
-
-                                        # Filter out virtual
-                                        if location.lower() != "virtual (nyc)":
-                                            today = datetime.now().date()
-                                            start_date = today.strftime("%Y-%m-%d")
-
-                                            events.append({
-                                                "name": event_name[:100],
-                                                "description": "NYC Tech Week event",
-                                                "start": f"{start_date} {time_str}" if time_str else f"{start_date} 18:00",
-                                                "venue": location,
-                                                "is_free": True,
-                                                "url": event_url if event_url and event_url.startswith("http") else f"https://www.tech-week.com{event_url}",
-                                            })
-                                        break
-                    except:
-                        continue
-
-            # Strategy 2: Look for divs with event-like content
-            if len(events) == 0:
-                divs = driver.find_elements(By.CSS_SELECTOR, "div[data-event], div[class*='event']")
-                for div in divs[:30]:
-                    try:
-                        text_content = div.text.strip()
-                        links = div.find_elements(By.TAG_NAME, "a")
-                        if text_content and links:
-                            event_name = links[0].text.strip() if links else text_content[:50]
-                            event_url = links[0].get_attribute("href") if links else ""
-
-                            if event_name:
-                                today = datetime.now().date()
-                                events.append({
-                                    "name": event_name[:100],
-                                    "description": "NYC Tech Week event",
-                                    "start": f"{today.strftime('%Y-%m-%d')} 18:00",
-                                    "venue": "New York",
-                                    "is_free": True,
-                                    "url": event_url if event_url and event_url.startswith("http") else f"https://www.tech-week.com{event_url}",
-                                })
-                    except:
-                        continue
-
-        except:
-            pass
-
-        driver.quit()
-        result = list(set([e["name"] for e in events]))  # Remove duplicates
-        result = [e for e in events if e["name"] in result[:25]]  # Keep first 25 unique
-        _set_cache("techweek", result)
-        return result
-
-    except Exception as e:
-        return []
+    """NYC Tech Week events via structured data on the calendar page (seasonal)."""
+    return _fetch_events_from_page(
+        "https://www.tech-week.com/calendar/nyc",
+        description="NYC Tech Week event",
+        base_url="https://www.tech-week.com",
+        limit=25,
+    )
 
 
+@_source("nyc_opendata")
 def fetch_nyc_opendata_events():
     """Fetch NYC events from NYC Open Data (no API key required)"""
-    cached = _get_cached("nyc_opendata")
-    if cached is not None:
-        return cached
+    # NYC Parks events — free public API
+    today = datetime.now().strftime("%Y-%m-%dT00:00:00")
+    end = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%dT00:00:00")
 
-    try:
-        # NYC Parks events — free public API
-        today = datetime.now().strftime("%Y-%m-%dT00:00:00")
-        end = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%dT00:00:00")
+    r = requests.get(
+        "https://data.cityofnewyork.us/resource/tvpp-9vvx.json",
+        params={
+            "$limit": 50,
+            "$where": f"start_date_time >= '{today}' AND start_date_time <= '{end}'",
+            "$order": "start_date_time ASC",
+        },
+        headers=_HTTP_HEADERS,
+        timeout=10
+    )
+    r.raise_for_status()
 
-        r = requests.get(
-            "https://data.cityofnewyork.us/resource/tvpp-9vvx.json",
-            params={
-                "$limit": 50,
-                "$where": f"start_date_time >= '{today}' AND start_date_time <= '{end}'",
-                "$order": "start_date_time ASC",
-            },
-            timeout=10
-        )
+    events = []
+    seen = set()
 
-        if r.status_code != 200:
-            return []
+    for e in r.json():
+        name = e.get("event_name", "").strip()
+        if not name or name in seen:
+            continue
+        seen.add(name)
 
-        events = []
-        seen = set()
+        start_raw = e.get("start_date_time", "")
+        try:
+            dt = datetime.fromisoformat(start_raw)
+            start = dt.strftime("%Y-%m-%d %H:%M")
+        except ValueError:
+            start = datetime.now().strftime("%Y-%m-%d 18:00")
 
-        for e in r.json():
-            name = e.get("event_name", "").strip()
-            if not name or name in seen:
-                continue
-            seen.add(name)
+        borough = e.get("event_borough", "New York")
+        location = e.get("event_location", borough)
+        event_type = e.get("event_type", "")
 
-            start_raw = e.get("start_date_time", "")
-            try:
-                dt = datetime.fromisoformat(start_raw)
-                start = dt.strftime("%Y-%m-%d %H:%M")
-            except:
-                start = datetime.now().strftime("%Y-%m-%d 18:00")
+        events.append({
+            "name": name[:100],
+            "description": f"{event_type} event in {borough}" if event_type else f"NYC event in {borough}",
+            "start": start,
+            "venue": location[:100] if location else borough,
+            "is_free": True,
+            "url": "https://www.nycgovparks.org/events",
+        })
 
-            borough = e.get("event_borough", "New York")
-            location = e.get("event_location", borough)
-            event_type = e.get("event_type", "")
-
-            events.append({
-                "name": name[:100],
-                "description": f"{event_type} event in {borough}" if event_type else f"NYC event in {borough}",
-                "start": start,
-                "venue": location[:100] if location else borough,
-                "is_free": True,
-                "url": "https://www.nycgovparks.org/events",
-            })
-
-        result = events[:30]
-        _set_cache("nyc_opendata", result)
-        return result
-
-    except Exception:
-        return []
+    return events[:30]
 
 
 def rank_events(events, user_goals):
@@ -711,6 +531,12 @@ def filter_events_by_date(events, start_date, end_date):
         except:
             pass
     return filtered
+
+
+@app.route("/api/status")
+def api_status():
+    """Health of each event source from its most recent fetch."""
+    return jsonify(_source_status)
 
 
 @app.route("/api/optimize", methods=["POST"])
