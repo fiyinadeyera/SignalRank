@@ -17,7 +17,8 @@ EVENT_SOURCES = [
 EVENT_INSTRUCTION = (
     "Extract upcoming events from these pages. For each event, extract: "
     "event name, a one-line description, start date and time (ISO 8601), "
-    "venue name, whether it is free, and the event URL. "
+    "venue name, whether it is free, the event URL, and the names of "
+    "hosts, speakers, or panelists (as a list of strings). "
     "Only include events happening in the next 14 days."
 )
 
@@ -32,6 +33,7 @@ EVENT_SCHEMA = {
             "venue": {"type": "string"},
             "is_free": {"type": "boolean"},
             "url": {"type": "string"},
+            "hosts": {"type": "array", "items": {"type": "string"}},
         },
         "required": ["name", "start"],
     },
@@ -97,6 +99,9 @@ def fetch_events():
 
     events = []
     for ev in raw_events:
+        hosts = ev.get("hosts") or []
+        if isinstance(hosts, str):
+            hosts = [hosts]
         events.append({
             "name": (ev.get("name") or "")[:100],
             "description": (ev.get("description") or "")[:300],
@@ -104,6 +109,7 @@ def fetch_events():
             "venue": (ev.get("venue") or "New York")[:100],
             "is_free": bool(ev.get("is_free", False)),
             "url": ev.get("url", ""),
+            "hosts": [h.strip() for h in hosts if h and len(h.strip()) > 2],
         })
     return events
 

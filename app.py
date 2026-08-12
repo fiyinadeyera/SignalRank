@@ -11,6 +11,7 @@ import sources
 import ranking
 import filters
 import webhook
+import enrichment
 
 app = Flask(__name__)
 
@@ -73,6 +74,8 @@ def optimize():
         if not all_events:
             all_events = sources.build_sample_events()
             is_live = False
+
+    all_events = enrichment.enrich_events(all_events)
 
     try:
         ranked = ranking.rank_events(all_events, goals)
