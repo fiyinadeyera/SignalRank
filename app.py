@@ -4,7 +4,8 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
 import cache
 import sources
@@ -14,27 +15,7 @@ import webhook
 import enrichment
 
 app = Flask(__name__)
-
-
-@app.route("/")
-def index():
-    return render_template("index.html", page="home")
-
-@app.route("/signalrank")
-def signalrank():
-    return render_template("signalrank.html", page="signalrank")
-
-@app.route("/agent")
-def agent():
-    return render_template("agent.html", page="agent")
-
-@app.route("/risk")
-def risk():
-    return render_template("risk.html", page="risk")
-
-@app.route("/events")
-def events():
-    return render_template("events.html", page="events")
+CORS(app, resources={r"/api/*": {"origins": ["https://fiyin.org", "http://localhost:5000"]}})
 
 
 @app.route("/api/status")
